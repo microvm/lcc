@@ -10,7 +10,7 @@ AR=ar ruv
 RANLIB=ranlib
 DIFF=diff
 RM=rm -f
-TSTDIR=$(BUILDDIR)/$(TARGET)/tst
+TSTDIR=$(BUILDDIR)/tst
 CUSTOM=custom.mk
 include $(CUSTOM)
 B=$(BUILDDIR)/
@@ -56,6 +56,7 @@ RCCOBJS=$Balloc$O \
 	$Bnull$O \
 	$Bsymbolic$O \
 	$Bgen$O \
+	$Bjson#0 \
 	$Bbytecode$O \
 	$Balpha$O \
 	$Bmips$O \
@@ -96,6 +97,7 @@ $Bstmt$O:	src/stmt.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/stmt.c
 $Bstring$O:	src/string.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/string.c
 $Bsym$O:	src/sym.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/sym.c
 $Bsymbolic$O:	src/symbolic.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/symbolic.c
+$Bjson$O:	src/json.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/json.c
 $Bbytecode$O:	src/bytecode.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/bytecode.c
 $Btrace$O:	src/trace.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/trace.c
 $Btree$O:	src/tree.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/tree.c
