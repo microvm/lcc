@@ -55,8 +55,8 @@ RCCOBJS=$Balloc$O \
 	$Btypes$O \
 	$Bnull$O \
 	$Bsymbolic$O \
+	$Bjson$O \
 	$Bgen$O \
-	$Bjson#0 \
 	$Bbytecode$O \
 	$Balpha$O \
 	$Bmips$O \

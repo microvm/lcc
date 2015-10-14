@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <float.h>
 
 #include "c.h"
 
@@ -53,12 +51,8 @@ Interface json64IR = {
 	0, 1, 0,	/* struct */
 	1,		/* little endian */
 	0,		/* multiply, divide, remainder intrinsic */
-	0,		/* decompose calls of structure returning functions to
-			 *  simpler operations
-			 */
-	0,		/* decompose calls of structure-taking functions to
-			 *  simpler operations
-			 */
+	0,		/* decompose calls of structure returning functions to simpler operations */
+	0,		/* decompose calls of structure-taking functions to simpler operations */
 	1,		/* left-to-right argument evaluation */
 	1,		/* eliminate common subexpressions in front end */
 	0,		/* unsigned characters */
@@ -100,24 +94,14 @@ static unsigned int type_counter=0;
 /* May mutate type */
 static char *type_name(Type t)
 {
-	if (isarith(t)) {
-		return t->u.sym->name;
-	}
-
-	if (isenum(t)) {
-		return t->u.sym->name;
-	}
-
-	if ((t==voidtype) ||
-	    (VOID == t->op)) {
-		return t->u.sym->name;
-	}
+	if (isarith(t)) return t->u.sym->name;
+	if (isenum(t)) return t->u.sym->name;
+	if ((t==voidtype) || (VOID == t->op)) return t->u.sym->name;
+	if (isstruct(t) || isunion(t)) return t->u.sym->name;
 
 	if (isarray(t)) {
 		UNLESS (t->u.sym) {
-			/* doesn't already have a symbol associated, so we'll note the name
-			 *  in a new symbol
-			 */
+			/* doesn't already have a symbol associated, so we'll note the name in a new symbol */
 			t->u.sym=calloc(1, sizeof(struct symbol));
 			UNLESS (t->u.sym) {
 				error("Failed to allocate\n");
@@ -128,7 +112,7 @@ static char *type_name(Type t)
 			/* Construct a new name by prepending [ to the element type's name */
 			char *orig_name=type_name(t->type);
 			int orig_len=strlen(orig_name);
-			
+
 			t->u.sym->name=calloc(12+orig_len, sizeof(char));
 			UNLESS (t->u.sym->name) {
 				error("Failed to allocate\n");
@@ -144,14 +128,8 @@ static char *type_name(Type t)
 		return t->u.sym->name;
 	}
 
-	if (isstruct(t) || isunion(t)) {
-		return t->u.sym->name;
-	}
-
 	if (isptr(t)) {
-		/* Pointer types, as exported by the front end, share the
-		 *  same symbol.  We'll fix that.
-		 */
+		/* Pointer types, as exported by the front end, share the same symbol. We'll fix that. */
 		char *refname;
 		int reflen;
 		Symbol sym=calloc(1, sizeof(struct symbol));
@@ -160,7 +138,7 @@ static char *type_name(Type t)
 			error("Failed to allocate\n");
 		}
 		memcpy(sym, t->u.sym, sizeof(struct symbol));
-		
+
 		refname=type_name(t->type);
 		reflen=strlen(refname);
 		sym->name=calloc(2+reflen, sizeof(char));
@@ -177,8 +155,8 @@ static char *type_name(Type t)
 	}
 
 	/* Function types don't have symbols attached, but we can use part of the
-	 *  Xtype field (which the front end initializes to zero, as it happens)
-	 */
+	*  Xtype field (which the front end initializes to zero, as it happens)
+	*/
 	if (isfunc(t)) {
 		UNLESS (t->x.xt) {
 			t->x.xt=calloc(14, sizeof(char));
@@ -195,9 +173,7 @@ static char *type_name(Type t)
 		return t->x.xt;
 	}
 
-	/* Qualified (const and/or volatile) versions of other types aren't
-	 *  allocated symbols by the front end
-	 */
+	/* Qualified (const and/or volatile) versions of other types aren't allocated symbols by the front end */
 	if (isconst(t) || isvolatile(t)) {
 		UNLESS (t->u.sym) {
 			char *qualifier;
@@ -205,7 +181,7 @@ static char *type_name(Type t)
 			int qlen;
 			char *ret;
 			int diff=isconst(t)-isvolatile(t);
-	
+
 			qualified=type_name(t->type);
 			qlen=strlen(qualified);
 
@@ -231,7 +207,7 @@ static char *type_name(Type t)
 			UNLESS (t->u.sym) {
 				error("Failed to allocate\n");
 			}
-		
+
 			t->u.sym->name=ret;
 		}
 
@@ -416,7 +392,7 @@ static void print_type(Type t) {
 		case CONST:		opstring="CONST";		break;
 		case VOLATILE:	opstring="VOLATILE";	break;
 		case CONST+VOLATILE:
-						opstring="CONST+VOLATILE";	break;
+			opstring="CONST+VOLATILE";	break;
 		default:
 			error("Unkown type operator\n");
 	}
@@ -429,7 +405,7 @@ static void print_type(Type t) {
 	}
 	print("\"align\": %d,\n", t->align);
 	print("\"size\": %d,\n", t->size);
-	
+
 	if (isenum(t)) {
 		Symbol *sp=t->u.sym->u.idlist;
 		int first;
@@ -485,7 +461,7 @@ static void print_type(Type t) {
 				add_type_to_worklist(*(tp));
 				tp++;
 			}
-			
+
 			print(" ]\n");
 		}
 	}
@@ -564,7 +540,7 @@ static void print_symbol_variable(Symbol p)
 		add_type_to_worklist(p->type);
 	}
 	if ((GLOBAL == p->scope) &&
-	    (p->src.file))	{
+		(p->src.file))	{
 		print("\"defined_in\": \"%s\",\n", p->src.file);
 	}
 
@@ -607,7 +583,7 @@ static void print_symbol_constant(Symbol p)
 		print("\"loc\": \"s:g:%s\",\n", p->u.c.loc->name);
 	}
 	print("\"done\": 1}\n");
-	
+
 	print("}\n");
 }
 
@@ -797,7 +773,7 @@ static void print_node(Node n)
 	print("\"opsize\": %d,\n", opsize(n->op));
 
 	UNLESS ((generic_op == ADDRF) ||
-	        (generic_op == ADDRG) ||
+			(generic_op == ADDRG) ||
 			(generic_op == ADDRL) ||
 			(generic_op == CNST) ||
 			((generic_op == RET) && (op_suffix == V)) ||
@@ -812,7 +788,7 @@ static void print_node(Node n)
 	}
 
 	if ((generic_op == ADD) ||
-	    (generic_op == BAND) ||
+		(generic_op == BAND) ||
 		(generic_op == BOR) ||
 		(generic_op == BXOR) ||
 		(generic_op == DIV) ||
@@ -828,7 +804,7 @@ static void print_node(Node n)
 		(generic_op == LE) ||
 		(generic_op == LT) ||
 		(generic_op == NE) ||
-	    ((generic_op == CALL) && (op_suffix == B))) {
+		((generic_op == CALL) && (op_suffix == B))) {
 		UNLESS (n->kids[1]->x.num) {
 			n->kids[1]->x.num=node_count;
 			node_count++;
@@ -863,7 +839,7 @@ static void print_node(Node n)
 		add_symbol_to_worklist(n->syms[0]);
 	}
 	if ((generic_op == ASGN) ||
-	    (generic_op == ARG)) {
+		(generic_op == ARG)) {
 		print("\"sym2\": \"%s\",\n", (n->syms[1]->x.name) ? n->syms[1]->x.name : symbol_name(n->syms[1]));
 		add_symbol_to_worklist(n->syms[1]);
 	}
@@ -893,9 +869,7 @@ dJ(progend)(void)
 Symbol lastsym=NULL;
 int cseg;
 
-/* defsymbol: called to define a new symbol with scope CONSTANTS, LABELS, or
- *  GLOBAL, or a static variable
- */
+/* defsymbol: called to define a new symbol with scope CONSTANTS, LABELS, or GLOBAL, or a static variable */
 dJ(defsymbol)(Symbol p)
 {
 	add_symbol_to_worklist(p);
@@ -972,72 +946,72 @@ static int block_count=0;
 
 dJ(emitconst)()
 {
-		int i;
-		Value *v=bb->arr;
+	int i;
+	Value *v=bb->arr;
 
-		print("\"b:%u\": {\n", block_count);
-		print("\"symbol\": \"%s\",\n", symbol_name(bb->sym));
-		print("\"contents\": [ ");
+	print("\"b:%u\": {\n", block_count);
+	print("\"symbol\": \"%s\",\n", symbol_name(bb->sym));
+	print("\"contents\": [ ");
 
-		for (i=0; i<bb->count; i++, v++) {
-			int szof;
+	for (i=0; i<bb->count; i++, v++) {
+		int szof;
 
-			print("%s", JSON_COMMA(!i));
-			
-			switch (bb->suffix) {
-				case F:		/* float, double, long double */
-					switch (bb->size) {
-						case 4:	/* float */
-							print("%f", (float)(v->d));
-							break;
-						case 8: /* double, long double */
-							print("%f", v->d);
-							break;
-						default:
-							error("Unknown floating point size %d\n", bb->size);
-					}
-					break;
-				case I:		/* char, short, int, long, long long */
-					switch (bb->size) {
-						case 1:	/* char */
-							print("%d", (char)(v->i));
-							break;
-						case 2:	/* short */
-							print("%d", (short)(v->i));
-							break;
-						case 4:
-							print("%d", (int)(v->i));
-							break;
-						case 8:
-							print("%d", v->i);
-							break;
-						default:
-							error("Unknown integer size %d\n", bb->size);
-					}
-					break;
-				case U:		/* unsigned integers of various sizes */
-					switch (bb->size) {
-						case 1:
-							print("%u", (unsigned char)(v->u));
-							break;
-						case 2:
-							print("%u", (unsigned short)(v->u));
-							break;
-						case 4:
-							print("%u", (unsigned int)(v->u));
-							break;
-						case 8:
-							print("%u", v->u);
-							break;
-						default:
-							error("Unknown unsigned integer size %d\n", bb->size);
-					}
-					break;
-				case P:
-					error("Pointer constants not supported\n");
-					break;
-			}
+		print("%s", JSON_COMMA(!i));
+
+		switch (bb->suffix) {
+			case F:		/* float, double, long double */
+				switch (bb->size) {
+					case 4:	/* float */
+						print("%f", (float)(v->d));
+						break;
+					case 8: /* double, long double */
+						print("%f", v->d);
+						break;
+					default:
+						error("Unknown floating point size %d\n", bb->size);
+				}
+				break;
+			case I:		/* char, short, int, long, long long */
+				switch (bb->size) {
+					case 1:	/* char */
+						print("%d", (char)(v->i));
+						break;
+					case 2:	/* short */
+						print("%d", (short)(v->i));
+						break;
+					case 4:
+						print("%d", (int)(v->i));
+						break;
+					case 8:
+						print("%d", v->i);
+						break;
+					default:
+						error("Unknown integer size %d\n", bb->size);
+				}
+				break;
+			case U:		/* unsigned integers of various sizes */
+				switch (bb->size) {
+					case 1:
+						print("%u", (unsigned char)(v->u));
+						break;
+					case 2:
+						print("%u", (unsigned short)(v->u));
+						break;
+					case 4:
+						print("%u", (unsigned int)(v->u));
+						break;
+					case 8:
+						print("%u", v->u);
+						break;
+					default:
+						error("Unknown unsigned integer size %d\n", bb->size);
+				}
+				break;
+			case P:
+				error("Pointer constants not supported\n");
+				break;
 		}
+	}
 	print(" ]},\n");
 	block_count++;
 
@@ -1086,13 +1060,13 @@ dJ(defconst)(int suffix, int size, Value v)
 	}
 
 	if ((suffix != bb->suffix) ||
-	    (size != bb->size)) {
+		(size != bb->size)) {
 		error("Type mismatch in constant %s\n", (bb->sym->name) ? bb->sym->name : "");
 	}
 
 	if (bb->count >= bb->cap) {
 		Value *tmp=calloc(2*(bb->count), sizeof(Value));
-		
+
 		UNLESS (tmp) {
 			error("Failed to allocate\n");
 		}

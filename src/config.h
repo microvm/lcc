@@ -62,7 +62,7 @@ typedef struct {
 	Node prev, next;
 	Node prevuse;
 	short argno;
-	uint num;
+	unsigned int num;
 } Xnode;
 typedef struct {
 	Symbol vbl;
