@@ -111,7 +111,7 @@ static char *type_name(Type t)
 		UNLESS (t->u.sym->name) {
 			/* Construct a new name by prepending [ to the element type's name */
 			char *orig_name=type_name(t->type);
-			int orig_len=strlen(orig_name);
+			size_t orig_len=strlen(orig_name);
 
 			t->u.sym->name=calloc(12+orig_len, sizeof(char));
 			UNLESS (t->u.sym->name) {
@@ -131,7 +131,7 @@ static char *type_name(Type t)
 	if (isptr(t)) {
 		/* Pointer types, as exported by the front end, share the same symbol. We'll fix that. */
 		char *refname;
-		int reflen;
+		size_t reflen;
 		Symbol sym=calloc(1, sizeof(struct symbol));
 
 		UNLESS (sym) {
@@ -178,7 +178,7 @@ static char *type_name(Type t)
 		UNLESS (t->u.sym) {
 			char *qualifier;
 			char *qualified;
-			int qlen;
+			size_t qlen;
 			char *ret;
 			int diff=isconst(t)-isvolatile(t);
 
@@ -394,6 +394,7 @@ static void print_type(Type t) {
 		case CONST+VOLATILE:
 			opstring="CONST+VOLATILE";	break;
 		default:
+			opstring = "";
 			error("Unkown type operator\n");
 	}
 
@@ -591,7 +592,7 @@ static int anon_symbol_count=0;
 
 static char *symbol_name(Symbol p)
 {
-	int baselen;
+	size_t baselen;
 
 	if (p->x.name) {
 		return p->x.name;
@@ -613,14 +614,14 @@ static char *symbol_name(Symbol p)
 		}
 		snprintf(p->x.name, 5+baselen, "s:g:%s", p->name);
 	} else if (PARAM == p->scope) {
-		int funclen=strlen(current_function->name);
+		size_t funclen=strlen(current_function->name);
 		p->x.name=calloc(8+p->x.caller+funclen+baselen, sizeof(char));
 		UNLESS (p->x.name) {
 			error("Failed to allocate\n");
 		}
 		snprintf(p->x.name, 8+p->x.caller+funclen+baselen, "s:p%s:(%s) %s", (p->x.caller ? "r" : ""), current_function->name, p->name);
 	} else if (LOCAL <= p->scope) {
-		int funclen=strlen(current_function->name);
+		size_t funclen=strlen(current_function->name);
 		p->x.name=calloc(18+funclen+baselen, sizeof(char));
 		UNLESS (p->x.name) {
 			error("Failed to allocate\n");
@@ -689,7 +690,7 @@ static void print_symbol(Symbol p)
 	print_types();
 }
 
-static int node_count=1;
+static unsigned int node_count=1;
 
 static void number_node(Node n) {
 	UNLESS (n->x.num) {
