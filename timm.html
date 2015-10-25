@@ -1,0 +1,329 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html><head><title>tst\\timm.c</title><link rev=made href="mailto:drh@microsoft.com">
+</head><body>
+<h1>tst\\timm.c</h1><P><em>Links lead from uses of identifiers and labels to their definitions.</em></P>
+<ul>
+<LI>progbeg<ol><li><code>"-target=symbolic"</code></li><li><code>"-html"</code></li><li><code>"-g9,//"</code></li><li><code>"lcc102920.i"</code></li><li><code>"timm.html"</code></li></ol></LI>
+<LI>export <a href="#1"><code>hello</code></a></LI>
+<LI>segment text</LI>
+<LI>function<UL><li>f=<a name="1"><code>hello</code></a><ul><li>type=void function(pointer to const char)</li><li>sclass=auto</li><li>scope=GLOBAL</li><li>flags=0</li><li>ref=0.000000</li></ul></li><li>ncalls=0</li><li>caller<OL><li><a name="5"><code>name</code></a><ul><li>type=pointer to const char</li><li>sclass=auto</li><li>scope=PARAM</li><li>flags=0</li><li>offset=0</li><li>ref=0.000000</li></ul></li></OL>
+</li><li>callee<OL><li><a name="6"><code>name</code></a><ul><li>type=pointer to const char</li><li>sclass=auto</li><li>scope=PARAM</li><li>flags=0</li><li>offset=0</li><li>ref=0.000000</li></ul></li></OL>
+</li></UL>
+</LI>
+<LI>blockbeg off=0</LI>
+<LI>local <a name="7"><code>hello</code></a><ul><li>type=pointer to char</li><li>sclass=auto</li><li>scope=LOCAL</li><li>flags=0</li><li>offset=0</li><li>ref=1.000000</li></ul></LI>
+<LI>blockend off=4</LI>
+<LI>emitcode<ul>//void hello(const char *name) {
+tst\timm.c:1.29:
+//    char *hello = "hello";
+tst\timm.c:2.18:
+<li>2. ADDRLP4 <a href="#7"><code>hello</code></a><br>
+3. ADDRGP4 <a href="#2"><code>2</code></a><br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+</li>//}
+tst\timm.c:3.0:
+<li><a name="4"><code>1</code></a>:<br>
+</li></ul></LI>
+<LI>maxoff=4</LI>
+<LI>export <a href="#8"><code>main</code></a></LI>
+<LI>function<UL><li>f=<a name="8"><code>main</code></a><ul><li>type=int function(int,pointer to pointer to const char)</li><li>sclass=auto</li><li>scope=GLOBAL</li><li>flags=0</li><li>ref=0.000000</li></ul></li><li>ncalls=1</li><li>caller<OL><li><a name="14"><code>argc</code></a><ul><li>type=int</li><li>sclass=auto</li><li>scope=PARAM</li><li>flags=0</li><li>offset=0</li><li>ref=0.000000</li></ul></li><li><a name="15"><code>argv</code></a><ul><li>type=pointer to pointer to const char</li><li>sclass=auto</li><li>scope=PARAM</li><li>flags=0</li><li>offset=4</li><li>ref=0.000000</li></ul></li></OL>
+</li><li>callee<OL><li><a name="16"><code>argc</code></a><ul><li>type=int</li><li>sclass=auto</li><li>scope=PARAM</li><li>flags=0</li><li>offset=0</li><li>ref=1.000000</li></ul></li><li><a name="17"><code>argv</code></a><ul><li>type=pointer to pointer to const char</li><li>sclass=auto</li><li>scope=PARAM</li><li>flags=0</li><li>offset=4</li><li>ref=1.000000</li></ul></li></OL>
+</li></UL>
+</LI>
+<LI>blockbeg off=0</LI>
+<LI>blockend off=0</LI>
+<LI>emitcode<ul>//int main(int argc, const char *argv[]) {
+tst\timm.c:5.39:
+//    if (argc < 2)
+tst\timm.c:6.8:
+<li>3. ADDRFP4 <a href="#16"><code>argc</code></a><br>
+2. INDIRI4 #3<br>
+4. CNSTI4 2<br>
+<strong>1</strong>' GEI4 #2 #4 <a href="#10"><code>4</code></a><br>
+</li>//        return 1;
+tst\timm.c:7.15:
+<li>2. CNSTI4 1<br>
+<strong>1</strong>' RETI4 #2<br>
+</li><li>2. ADDRGP4 <a href="#12"><code>3</code></a><br>
+<strong>1</strong>' JUMPV #2<br>
+</li><li><a name="10"><code>4</code></a>:<br>
+</li>//    hello(argv[1]);
+tst\timm.c:8.4:
+<li>5. ADDRFP4 <a href="#17"><code>argv</code></a><br>
+4. INDIRP4 #5<br>
+6. CNSTI4 4<br>
+3. ADDP4 #4 #6<br>
+2. INDIRP4 #3<br>
+<strong>1</strong>' ARGP4 #2 4 4<br>
+8. ADDRGP4 <a href="#1"><code>hello</code></a><br>
+<strong>7</strong>' CALLV #8 {void function(pointer to const char)}<br>
+</li>//    return 0;
+tst\timm.c:9.11:
+<li>2. CNSTI4 0<br>
+<strong>1</strong>' RETI4 #2<br>
+</li><li><a name="12"><code>3</code></a>:<br>
+</li></ul></LI>
+<LI>maxoff=0</LI>
+<LI>export <a href="#18"><code>memchar</code></a></LI>
+<LI>function<UL><li>f=<a name="18"><code>memchar</code></a><ul><li>type=void function(void)</li><li>sclass=auto</li><li>scope=GLOBAL</li><li>flags=0</li><li>ref=0.000000</li></ul></li><li>ncalls=0</li><li>caller=<em>empty</em></li><li>callee=<em>empty</em></li></UL>
+</LI>
+<LI>blockbeg off=0</LI>
+<LI>local <a name="21"><code>x</code></a><ul><li>type=char</li><li>sclass=auto</li><li>scope=LOCAL</li><li>flags=addressed</li><li>offset=0</li><li>ref=5.000000</li></ul></LI>
+<LI>local <a name="22"><code>p</code></a><ul><li>type=pointer to char</li><li>sclass=auto</li><li>scope=LOCAL</li><li>flags=addressed</li><li>offset=4</li><li>ref=5.000000</li></ul></LI>
+<LI>blockend off=8</LI>
+<LI>emitcode<ul>//void memchar() {
+tst\timm.c:12.15:
+//    &x, &p;
+tst\timm.c:15.4:
+//    x = *p++;
+tst\timm.c:16.4:
+<li>2. ADDRLP4 count=2 <a href="#22"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 1<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#21"><code>x</code></a><br>
+8. INDIRI1 #1<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//    x = *++p;
+tst\timm.c:17.4:
+<li>2. ADDRLP4 count=2 <a href="#22"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 1<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#21"><code>x</code></a><br>
+8. INDIRI1 #3<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//    x = *p--;
+tst\timm.c:18.4:
+<li>2. ADDRLP4 count=2 <a href="#22"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 -1<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#21"><code>x</code></a><br>
+8. INDIRI1 #1<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//    x = *--p;
+tst\timm.c:19.4:
+<li>2. ADDRLP4 count=2 <a href="#22"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 -1<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#21"><code>x</code></a><br>
+8. INDIRI1 #3<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//}
+tst\timm.c:20.0:
+<li><a name="20"><code>6</code></a>:<br>
+</li></ul></LI>
+<LI>maxoff=8</LI>
+<LI>export <a href="#23"><code>memint</code></a></LI>
+<LI>function<UL><li>f=<a name="23"><code>memint</code></a><ul><li>type=void function(void)</li><li>sclass=auto</li><li>scope=GLOBAL</li><li>flags=0</li><li>ref=0.000000</li></ul></li><li>ncalls=0</li><li>caller=<em>empty</em></li><li>callee=<em>empty</em></li></UL>
+</LI>
+<LI>blockbeg off=0</LI>
+<LI>local <a name="26"><code>x</code></a><ul><li>type=int</li><li>sclass=auto</li><li>scope=LOCAL</li><li>flags=addressed</li><li>offset=0</li><li>ref=5.000000</li></ul></LI>
+<LI>local <a name="27"><code>p</code></a><ul><li>type=pointer to int</li><li>sclass=auto</li><li>scope=LOCAL</li><li>flags=addressed</li><li>offset=4</li><li>ref=5.000000</li></ul></LI>
+<LI>blockend off=8</LI>
+<LI>emitcode<ul>//void memint() {
+tst\timm.c:22.14:
+//    &x, &p;
+tst\timm.c:25.4:
+//    x = *p++;
+tst\timm.c:26.4:
+<li>2. ADDRLP4 count=2 <a href="#27"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 4<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#26"><code>x</code></a><br>
+8. INDIRI4 #1<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//    x = *++p;
+tst\timm.c:27.4:
+<li>2. ADDRLP4 count=2 <a href="#27"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 4<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#26"><code>x</code></a><br>
+8. INDIRI4 #3<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//    x = *p--;
+tst\timm.c:28.4:
+<li>2. ADDRLP4 count=2 <a href="#27"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 -4<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#26"><code>x</code></a><br>
+8. INDIRI4 #1<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//    x = *--p;
+tst\timm.c:29.4:
+<li>2. ADDRLP4 count=2 <a href="#27"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 -4<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#26"><code>x</code></a><br>
+8. INDIRI4 #3<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//}
+tst\timm.c:30.0:
+<li><a name="25"><code>7</code></a>:<br>
+</li></ul></LI>
+<LI>maxoff=8</LI>
+<LI>export <a href="#28"><code>regchar</code></a></LI>
+<LI>function<UL><li>f=<a name="28"><code>regchar</code></a><ul><li>type=void function(void)</li><li>sclass=auto</li><li>scope=GLOBAL</li><li>flags=0</li><li>ref=0.000000</li></ul></li><li>ncalls=0</li><li>caller=<em>empty</em></li><li>callee=<em>empty</em></li></UL>
+</LI>
+<LI>blockbeg off=0</LI>
+<LI>local <a name="30"><code>x</code></a><ul><li>type=char</li><li>sclass=register</li><li>scope=LOCAL</li><li>flags=0</li><li>offset=0</li><li>ref=4.000000</li></ul></LI>
+<LI>local <a name="31"><code>p</code></a><ul><li>type=pointer to char</li><li>sclass=register</li><li>scope=LOCAL</li><li>flags=0</li><li>offset=4</li><li>ref=4.000000</li></ul></LI>
+<LI>blockend off=8</LI>
+<LI>emitcode<ul>//void regchar() {
+tst\timm.c:32.15:
+//    x = *p++;
+tst\timm.c:35.4:
+<li>2. ADDRLP4 count=2 <a href="#31"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 1<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#30"><code>x</code></a><br>
+8. INDIRI1 #1<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//    x = *++p;
+tst\timm.c:36.4:
+<li>2. ADDRLP4 count=2 <a href="#31"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 1<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#30"><code>x</code></a><br>
+8. INDIRI1 #3<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//    x = *p--;
+tst\timm.c:37.4:
+<li>2. ADDRLP4 count=2 <a href="#31"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 -1<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#30"><code>x</code></a><br>
+8. INDIRI1 #1<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//    x = *--p;
+tst\timm.c:38.4:
+<li>2. ADDRLP4 count=2 <a href="#31"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 -1<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#30"><code>x</code></a><br>
+8. INDIRI1 #3<br>
+<strong>6</strong>' ASGNI1 #7 #8 1 1<br>
+</li>//}
+tst\timm.c:39.0:
+<li><a name="29"><code>8</code></a>:<br>
+</li></ul></LI>
+<LI>maxoff=8</LI>
+<LI>export <a href="#32"><code>regint</code></a></LI>
+<LI>function<UL><li>f=<a name="32"><code>regint</code></a><ul><li>type=void function(void)</li><li>sclass=auto</li><li>scope=GLOBAL</li><li>flags=0</li><li>ref=0.000000</li></ul></li><li>ncalls=0</li><li>caller=<em>empty</em></li><li>callee=<em>empty</em></li></UL>
+</LI>
+<LI>blockbeg off=0</LI>
+<LI>local <a name="34"><code>x</code></a><ul><li>type=int</li><li>sclass=register</li><li>scope=LOCAL</li><li>flags=0</li><li>offset=0</li><li>ref=4.000000</li></ul></LI>
+<LI>local <a name="35"><code>p</code></a><ul><li>type=pointer to int</li><li>sclass=register</li><li>scope=LOCAL</li><li>flags=0</li><li>offset=4</li><li>ref=4.000000</li></ul></LI>
+<LI>blockend off=8</LI>
+<LI>emitcode<ul>//void regint() {
+tst\timm.c:41.14:
+//    x = *p++;
+tst\timm.c:44.4:
+<li>2. ADDRLP4 count=2 <a href="#35"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 4<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#34"><code>x</code></a><br>
+8. INDIRI4 #1<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//    x = *++p;
+tst\timm.c:45.4:
+<li>2. ADDRLP4 count=2 <a href="#35"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 4<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#34"><code>x</code></a><br>
+8. INDIRI4 #3<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//    x = *p--;
+tst\timm.c:46.4:
+<li>2. ADDRLP4 count=2 <a href="#35"><code>p</code></a><br>
+<strong>1</strong>' INDIRP4 count=2 #2<br>
+5. CNSTI4 -4<br>
+4. ADDP4 #1 #5<br>
+<strong>3</strong>' ASGNP4 #2 #4 4 4<br>
+7. ADDRLP4 <a href="#34"><code>x</code></a><br>
+8. INDIRI4 #1<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//    x = *--p;
+tst\timm.c:47.4:
+<li>2. ADDRLP4 count=2 <a href="#35"><code>p</code></a><br>
+4. INDIRP4 #2<br>
+5. CNSTI4 -4<br>
+3. ADDP4 count=2 #4 #5<br>
+<strong>1</strong>' ASGNP4 #2 #3 4 4<br>
+7. ADDRLP4 <a href="#34"><code>x</code></a><br>
+8. INDIRI4 #3<br>
+<strong>6</strong>' ASGNI4 #7 #8 4 4<br>
+</li>//}
+tst\timm.c:48.0:
+<li><a name="33"><code>9</code></a>:<br>
+</li></ul></LI>
+<LI>maxoff=8</LI>
+<a href="#32"><code>regint</code></a>
+tst\timm.c:1.29: <a href="#6"><code>name</code></a>
+tst\timm.c:2.18: <a href="#7"><code>hello</code></a>
+tst\timm.c:3.0: <a href="#7"><code>hello</code></a>
+tst\timm.c:5.39: <a href="#17"><code>argv</code></a>
+tst\timm.c:6.8: <a href="#17"><code>argv</code></a>
+tst\timm.c:7.15: <a href="#17"><code>argv</code></a>
+tst\timm.c:8.4: <a href="#17"><code>argv</code></a>
+tst\timm.c:9.11: <a href="#17"><code>argv</code></a>
+tst\timm.c:12.15: <a href="#18"><code>memchar</code></a>
+tst\timm.c:15.4: <a href="#22"><code>p</code></a>
+tst\timm.c:16.4: <a href="#22"><code>p</code></a>
+tst\timm.c:17.4: <a href="#22"><code>p</code></a>
+tst\timm.c:18.4: <a href="#22"><code>p</code></a>
+tst\timm.c:19.4: <a href="#22"><code>p</code></a>
+tst\timm.c:20.0: <a href="#22"><code>p</code></a>
+tst\timm.c:22.14: <a href="#23"><code>memint</code></a>
+tst\timm.c:25.4: <a href="#27"><code>p</code></a>
+tst\timm.c:26.4: <a href="#27"><code>p</code></a>
+tst\timm.c:27.4: <a href="#27"><code>p</code></a>
+tst\timm.c:28.4: <a href="#27"><code>p</code></a>
+tst\timm.c:29.4: <a href="#27"><code>p</code></a>
+tst\timm.c:30.0: <a href="#27"><code>p</code></a>
+tst\timm.c:32.15: <a href="#28"><code>regchar</code></a>
+tst\timm.c:35.4: <a href="#31"><code>p</code></a>
+tst\timm.c:36.4: <a href="#31"><code>p</code></a>
+tst\timm.c:37.4: <a href="#31"><code>p</code></a>
+tst\timm.c:38.4: <a href="#31"><code>p</code></a>
+tst\timm.c:39.0: <a href="#31"><code>p</code></a>
+tst\timm.c:41.14: <a href="#32"><code>regint</code></a>
+tst\timm.c:44.4: <a href="#35"><code>p</code></a>
+tst\timm.c:45.4: <a href="#35"><code>p</code></a>
+tst\timm.c:46.4: <a href="#35"><code>p</code></a>
+tst\timm.c:47.4: <a href="#35"><code>p</code></a>
+tst\timm.c:48.0: <a href="#35"><code>p</code></a>
+<LI>segment lit</LI>
+<LI>global <a name="2"><code>2</code></a><ul><li>type=array 6 of char</li><li>sclass=static</li><li>scope=GLOBAL</li><li>flags=generated</li><li>ref=1.000000</li></ul></LI>
+<LI>defstring <code>"hello\000"</code></LI>
+<LI>progend</LI>
+</ul>
+<hr><address>Sat Oct 24 15:55:35 2015
+</address>
+</body></html>

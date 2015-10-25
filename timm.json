@@ -1,0 +1,1532 @@
+{
+	"f:hello": {
+		"sym": "s:g:hello",
+		"caller": [ "s:pr:(hello) name" ],
+		"callee": [ "s:p:(hello) name" ],
+		"body": [ "n:1", "n:2" ]
+	},
+	"n:1": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:3",
+		"kid2": "n:4",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"s:p:(hello) name": {
+		"name": "name",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:*const char",
+		"done": 1
+	},
+	"t:*const char": {
+		"op": "POINTER",
+		"type": "t:const char",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"t:const char": {
+		"op": "CONST",
+		"type": "t:char",
+		"align": 1,
+		"size": 1,
+		"done": 1
+	},
+	"t:char": {
+		"op": "INT",
+		"align": 1,
+		"size": 1,
+		"done": 1
+	},
+	"s:pr:(hello) name": {
+		"name": "name",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:*const char",
+		"done": 1
+	},
+	"s:0:(hello) hello": {
+		"name": "hello",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:*char",
+		"done": 1
+	},
+	"t:*char": {
+		"op": "POINTER",
+		"type": "t:char",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"s:l:1": {
+		"label": 1
+	},
+	"s:c:1": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:int",
+			"v": 1,
+			"done": 1
+		}
+	},
+	"t:int": {
+		"op": "INT",
+		"align": 1,
+		"size": 4,
+		"done": 1
+	},
+	"s:c:8": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:int",
+			"v": 8,
+			"done": 1
+		}
+	},
+	"s:g:2": {
+		"name": "2",
+		"sclass": "STATIC",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": true,
+		"defined": false,
+		"type": "t:[6char",
+		"done": 1
+	},
+	"t:[6char": {
+		"op": "ARRAY",
+		"type": "t:char",
+		"align": 1,
+		"size": 6,
+		"done": 1
+	},
+	"s:g:hello": {
+		"name": "hello",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:type0",
+		"defined_in": "tst\timm.c",
+		"done": 1
+	},
+	"t:type0": {
+		"op": "FUNCTION",
+		"type": "t:void",
+		"align": 0,
+		"size": 0,
+		"oldstyle": false,
+		"proto": [ "t:*const char" ]
+		"done": 1
+	},
+	"t:void": {
+		"op": "VOID",
+		"align": 0,
+		"size": 0,
+		"done": 1
+	},
+	"n:4": {
+		"op": "ADDRG",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:g:2",
+		"done": 1
+	},
+	"n:3": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(hello) hello",
+		"done": 1
+	},
+	"n:2": {
+		"op": "LABEL",
+		"optype": "V",
+		"opsize": 0,
+		"sym1": "s:l:1",
+		"done": 1
+	},
+	"f:main": {
+		"sym": "s:g:main",
+		"caller": [ "s:pr:(main) argc", "s:pr:(main) argv" ],
+		"callee": [ "s:p:(main) argc", "s:p:(main) argv" ],
+		"body": [ "n:5", "n:6", "n:7", "n:8", "n:9", "n:10", "n:11", "n:12" ]
+	},
+	"n:5": {
+		"op": "GE",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:13",
+		"kid2": "n:14",
+		"sym1": "s:l:4",
+		"done": 1
+	},
+	"s:p:(main) argv": {
+		"name": "argv",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:**const char",
+		"done": 1
+	},
+	"t:**const char": {
+		"op": "POINTER",
+		"type": "t:*const char",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"t:*const char": {
+		"op": "POINTER",
+		"type": "t:const char",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"t:const char": {
+		"op": "CONST",
+		"type": "t:char",
+		"align": 1,
+		"size": 1,
+		"done": 1
+	},
+	"s:p:(main) argc": {
+		"name": "argc",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:int",
+		"done": 1
+	},
+	"s:pr:(main) argv": {
+		"name": "argv",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:**const char",
+		"done": 1
+	},
+	"s:pr:(main) argc": {
+		"name": "argc",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:int",
+		"done": 1
+	},
+	"s:c:0": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:int",
+			"v": 0,
+			"done": 1
+		}
+	},
+	"s:c:8": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:long int",
+			"v": 8,
+			"done": 1
+		}
+	},
+	"t:long int": {
+		"op": "INT",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"s:l:3": {
+		"label": 3
+	},
+	"s:l:4": {
+		"label": 4
+	},
+	"s:c:2": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:int",
+			"v": 2,
+			"done": 1
+		}
+	},
+	"s:g:main": {
+		"name": "main",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:type1",
+		"defined_in": "tst\timm.c",
+		"done": 1
+	},
+	"t:type1": {
+		"op": "FUNCTION",
+		"type": "t:int",
+		"align": 0,
+		"size": 0,
+		"oldstyle": false,
+		"proto": [ "t:int", "t:**const char" ]
+		"done": 1
+	},
+	"n:14": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 4,
+		"sym1": "s:c:2",
+		"done": 1
+	},
+	"n:13": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:15",
+		"done": 1
+	},
+	"n:15": {
+		"op": "ADDRF",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:p:(main) argc",
+		"done": 1
+	},
+	"n:6": {
+		"op": "RET",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:16",
+		"done": 1
+	},
+	"n:16": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 4,
+		"sym1": "s:c:1",
+		"done": 1
+	},
+	"n:7": {
+		"op": "JUMP",
+		"optype": "V",
+		"opsize": 0,
+		"kid1": "n:17",
+		"done": 1
+	},
+	"n:17": {
+		"op": "ADDRG",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:l:3",
+		"done": 1
+	},
+	"n:8": {
+		"op": "LABEL",
+		"optype": "V",
+		"opsize": 0,
+		"sym1": "s:l:4",
+		"done": 1
+	},
+	"n:10": {
+		"op": "CALL",
+		"optype": "V",
+		"opsize": 0,
+		"kid1": "n:18",
+		"type": "t:type0",
+		"done": 1
+	},
+	"n:18": {
+		"op": "ADDRG",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:g:hello",
+		"done": 1
+	},
+	"n:9": {
+		"op": "ARG",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:19",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:19": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:20",
+		"done": 1
+	},
+	"n:20": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:21",
+		"kid2": "n:22",
+		"done": 1
+	},
+	"n:22": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 8,
+		"sym1": "s:c:8",
+		"done": 1
+	},
+	"n:21": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:23",
+		"done": 1
+	},
+	"n:23": {
+		"op": "ADDRF",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:p:(main) argv",
+		"done": 1
+	},
+	"n:11": {
+		"op": "RET",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:24",
+		"done": 1
+	},
+	"n:24": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 4,
+		"sym1": "s:c:0",
+		"done": 1
+	},
+	"n:12": {
+		"op": "LABEL",
+		"optype": "V",
+		"opsize": 0,
+		"sym1": "s:l:3",
+		"done": 1
+	},
+	"f:memchar": {
+		"sym": "s:g:memchar",
+		"caller": [ ],
+		"callee": [ ],
+		"body": [ "n:25", "n:26", "n:27", "n:28", "n:29", "n:30", "n:31", "n:32", "n:33", "n:34", "n:35" ]
+	},
+	"n:34": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:36",
+		"kid2": "n:37",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"s:0:(memchar) p": {
+		"name": "p",
+		"sclass": "AUTO",
+		"addressed": true,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:*char",
+		"done": 1
+	},
+	"t:*char": {
+		"op": "POINTER",
+		"type": "t:char",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"s:0:(memchar) x": {
+		"name": "x",
+		"sclass": "AUTO",
+		"addressed": true,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:char",
+		"done": 1
+	},
+	"s:l:6": {
+		"label": 6
+	},
+	"s:c:-1": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:int",
+			"v": -1,
+			"done": 1
+		}
+	},
+	"s:c:1": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:long int",
+			"v": 1,
+			"done": 1
+		}
+	},
+	"s:g:memchar": {
+		"name": "memchar",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:type2",
+		"defined_in": "tst\timm.c",
+		"done": 1
+	},
+	"t:type2": {
+		"op": "FUNCTION",
+		"type": "t:void",
+		"align": 0,
+		"size": 0,
+		"oldstyle": true,
+		"done": 1
+	},
+	"n:37": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:38",
+		"done": 1
+	},
+	"n:38": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:39",
+		"kid2": "n:40",
+		"done": 1
+	},
+	"n:40": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 4,
+		"sym1": "s:c:-1",
+		"done": 1
+	},
+	"n:39": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"done": 1
+	},
+	"n:41": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(memchar) p",
+		"done": 1
+	},
+	"n:36": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(memchar) x",
+		"done": 1
+	},
+	"n:33": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"kid2": "n:38",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:32": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:36",
+		"kid2": "n:42",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:42": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:30",
+		"done": 1
+	},
+	"n:31": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"kid2": "n:43",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:43": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:30",
+		"kid2": "n:40",
+		"done": 1
+	},
+	"n:30": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"done": 1
+	},
+	"n:29": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:36",
+		"kid2": "n:44",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:44": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:45",
+		"done": 1
+	},
+	"n:45": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:46",
+		"kid2": "n:47",
+		"done": 1
+	},
+	"n:47": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 8,
+		"sym1": "s:c:1",
+		"done": 1
+	},
+	"n:46": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"done": 1
+	},
+	"n:28": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"kid2": "n:45",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:27": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:36",
+		"kid2": "n:48",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:48": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:25",
+		"done": 1
+	},
+	"n:26": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"kid2": "n:49",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:49": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:25",
+		"kid2": "n:47",
+		"done": 1
+	},
+	"n:25": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:41",
+		"done": 1
+	},
+	"n:35": {
+		"op": "LABEL",
+		"optype": "V",
+		"opsize": 0,
+		"sym1": "s:l:6",
+		"done": 1
+	},
+	"f:memint": {
+		"sym": "s:g:memint",
+		"caller": [ ],
+		"callee": [ ],
+		"body": [ "n:50", "n:51", "n:52", "n:53", "n:54", "n:55", "n:56", "n:57", "n:58", "n:59", "n:60" ]
+	},
+	"n:59": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:61",
+		"kid2": "n:62",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"s:0:(memint) p": {
+		"name": "p",
+		"sclass": "AUTO",
+		"addressed": true,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:*int",
+		"done": 1
+	},
+	"t:*int": {
+		"op": "POINTER",
+		"type": "t:int",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"s:0:(memint) x": {
+		"name": "x",
+		"sclass": "AUTO",
+		"addressed": true,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:int",
+		"done": 1
+	},
+	"s:l:7": {
+		"label": 7
+	},
+	"s:c:-4": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:int",
+			"v": -4,
+			"done": 1
+		}
+	},
+	"s:c:4": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:int",
+			"v": 4,
+			"done": 1
+		}
+	},
+	"s:c:4": {
+		"sclass": "STATIC",
+		"const": {
+			"type": "t:long int",
+			"v": 4,
+			"done": 1
+		}
+	},
+	"s:g:memint": {
+		"name": "memint",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:type3",
+		"defined_in": "tst\timm.c",
+		"done": 1
+	},
+	"t:type3": {
+		"op": "FUNCTION",
+		"type": "t:void",
+		"align": 0,
+		"size": 0,
+		"oldstyle": true,
+		"done": 1
+	},
+	"n:62": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:63",
+		"done": 1
+	},
+	"n:63": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:64",
+		"kid2": "n:65",
+		"done": 1
+	},
+	"n:65": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 4,
+		"sym1": "s:c:-4",
+		"done": 1
+	},
+	"n:64": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"done": 1
+	},
+	"n:66": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(memint) p",
+		"done": 1
+	},
+	"n:61": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(memint) x",
+		"done": 1
+	},
+	"n:58": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"kid2": "n:63",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:57": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:61",
+		"kid2": "n:67",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:67": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:55",
+		"done": 1
+	},
+	"n:56": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"kid2": "n:68",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:68": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:55",
+		"kid2": "n:65",
+		"done": 1
+	},
+	"n:55": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"done": 1
+	},
+	"n:54": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:61",
+		"kid2": "n:69",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:69": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:70",
+		"done": 1
+	},
+	"n:70": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:71",
+		"kid2": "n:72",
+		"done": 1
+	},
+	"n:72": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 8,
+		"sym1": "s:c:4",
+		"done": 1
+	},
+	"n:71": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"done": 1
+	},
+	"n:53": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"kid2": "n:70",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:52": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:61",
+		"kid2": "n:73",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:73": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:50",
+		"done": 1
+	},
+	"n:51": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"kid2": "n:74",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:74": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:50",
+		"kid2": "n:72",
+		"done": 1
+	},
+	"n:50": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:66",
+		"done": 1
+	},
+	"n:60": {
+		"op": "LABEL",
+		"optype": "V",
+		"opsize": 0,
+		"sym1": "s:l:7",
+		"done": 1
+	},
+	"f:regchar": {
+		"sym": "s:g:regchar",
+		"caller": [ ],
+		"callee": [ ],
+		"body": [ "n:75", "n:76", "n:77", "n:78", "n:79", "n:80", "n:81", "n:82", "n:83", "n:84", "n:85" ]
+	},
+	"n:84": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:86",
+		"kid2": "n:87",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"s:0:(regchar) p": {
+		"name": "p",
+		"sclass": "REGISTER",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:*char",
+		"done": 1
+	},
+	"t:*char": {
+		"op": "POINTER",
+		"type": "t:char",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"s:0:(regchar) x": {
+		"name": "x",
+		"sclass": "REGISTER",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:char",
+		"done": 1
+	},
+	"s:l:8": {
+		"label": 8
+	},
+	"s:g:regchar": {
+		"name": "regchar",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:type4",
+		"defined_in": "tst\timm.c",
+		"done": 1
+	},
+	"t:type4": {
+		"op": "FUNCTION",
+		"type": "t:void",
+		"align": 0,
+		"size": 0,
+		"oldstyle": true,
+		"done": 1
+	},
+	"n:87": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:88",
+		"done": 1
+	},
+	"n:88": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:89",
+		"kid2": "n:90",
+		"done": 1
+	},
+	"n:90": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 4,
+		"sym1": "s:c:-1",
+		"done": 1
+	},
+	"n:89": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"done": 1
+	},
+	"n:91": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(regchar) p",
+		"done": 1
+	},
+	"n:86": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(regchar) x",
+		"done": 1
+	},
+	"n:83": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"kid2": "n:88",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:82": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:86",
+		"kid2": "n:92",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:92": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:80",
+		"done": 1
+	},
+	"n:81": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"kid2": "n:93",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:93": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:80",
+		"kid2": "n:90",
+		"done": 1
+	},
+	"n:80": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"done": 1
+	},
+	"n:79": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:86",
+		"kid2": "n:94",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:94": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:95",
+		"done": 1
+	},
+	"n:95": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:96",
+		"kid2": "n:97",
+		"done": 1
+	},
+	"n:97": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 8,
+		"sym1": "s:c:1",
+		"done": 1
+	},
+	"n:96": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"done": 1
+	},
+	"n:78": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"kid2": "n:95",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:77": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:86",
+		"kid2": "n:98",
+		"sym1": "s:c:1",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:98": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 1,
+		"kid1": "n:75",
+		"done": 1
+	},
+	"n:76": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"kid2": "n:99",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:99": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:75",
+		"kid2": "n:97",
+		"done": 1
+	},
+	"n:75": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:91",
+		"done": 1
+	},
+	"n:85": {
+		"op": "LABEL",
+		"optype": "V",
+		"opsize": 0,
+		"sym1": "s:l:8",
+		"done": 1
+	},
+	"f:regint": {
+		"sym": "s:g:regint",
+		"caller": [ ],
+		"callee": [ ],
+		"body": [ "n:100", "n:101", "n:102", "n:103", "n:104", "n:105", "n:106", "n:107", "n:108", "n:109", "n:110" ]
+	},
+	"n:109": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:111",
+		"kid2": "n:112",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"s:0:(regint) p": {
+		"name": "p",
+		"sclass": "REGISTER",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:*int",
+		"done": 1
+	},
+	"t:*int": {
+		"op": "POINTER",
+		"type": "t:int",
+		"align": 1,
+		"size": 8,
+		"done": 1
+	},
+	"s:0:(regint) x": {
+		"name": "x",
+		"sclass": "REGISTER",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:int",
+		"done": 1
+	},
+	"s:l:9": {
+		"label": 9
+	},
+	"s:g:regint": {
+		"name": "regint",
+		"sclass": "AUTO",
+		"addressed": false,
+		"computed": false,
+		"temporary": false,
+		"generated": false,
+		"defined": true,
+		"type": "t:type5",
+		"defined_in": "tst\timm.c",
+		"done": 1
+	},
+	"t:type5": {
+		"op": "FUNCTION",
+		"type": "t:void",
+		"align": 0,
+		"size": 0,
+		"oldstyle": true,
+		"done": 1
+	},
+	"n:112": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:113",
+		"done": 1
+	},
+	"n:113": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:114",
+		"kid2": "n:115",
+		"done": 1
+	},
+	"n:115": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 4,
+		"sym1": "s:c:-4",
+		"done": 1
+	},
+	"n:114": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"done": 1
+	},
+	"n:116": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(regint) p",
+		"done": 1
+	},
+	"n:111": {
+		"op": "ADDRL",
+		"optype": "P",
+		"opsize": 8,
+		"sym1": "s:0:(regint) x",
+		"done": 1
+	},
+	"n:108": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"kid2": "n:113",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:107": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:111",
+		"kid2": "n:117",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:117": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:105",
+		"done": 1
+	},
+	"n:106": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"kid2": "n:118",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:118": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:105",
+		"kid2": "n:115",
+		"done": 1
+	},
+	"n:105": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"done": 1
+	},
+	"n:104": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:111",
+		"kid2": "n:119",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:119": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:120",
+		"done": 1
+	},
+	"n:120": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:121",
+		"kid2": "n:122",
+		"done": 1
+	},
+	"n:122": {
+		"op": "CNST",
+		"optype": "I",
+		"opsize": 8,
+		"sym1": "s:c:4",
+		"done": 1
+	},
+	"n:121": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"done": 1
+	},
+	"n:103": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"kid2": "n:120",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:102": {
+		"op": "ASGN",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:111",
+		"kid2": "n:123",
+		"sym1": "s:c:4",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:123": {
+		"op": "INDIR",
+		"optype": "I",
+		"opsize": 4,
+		"kid1": "n:100",
+		"done": 1
+	},
+	"n:101": {
+		"op": "ASGN",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"kid2": "n:124",
+		"sym1": "s:c:8",
+		"sym2": "s:c:1",
+		"done": 1
+	},
+	"n:124": {
+		"op": "ADD",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:100",
+		"kid2": "n:122",
+		"done": 1
+	},
+	"n:100": {
+		"op": "INDIR",
+		"optype": "P",
+		"opsize": 8,
+		"kid1": "n:116",
+		"done": 1
+	},
+	"n:110": {
+		"op": "LABEL",
+		"optype": "V",
+		"opsize": 0,
+		"sym1": "s:l:9",
+		"done": 1
+	},
+	"b:0": {
+		"symbol": "s:g:2",
+		"contents": [ 104, 101, 108, 108, 111, 0 ]
+	},
+	"done": 1
+}

@@ -9,16 +9,16 @@ E=.exe
 CC=cl -nologo
 CFLAGS=-DWIN32 -Zi -Fd$(BUILDDIR)^\
 LD=cl -nologo
-LDFLAGS=-Zi -MLd -Fd$(BUILDDIR)^\
+LDFLAGS=-Zi -Fd$(BUILDDIR)^\
 TSTDIR=$(BUILDDIR)\$(TARGET)\tst
 B=$(BUILDDIR)^\
 T=$(TSTDIR)^\
 C=$Blcc -Wo-lccdir=$(BUILDDIR) -Wf-target=$(TARGET) -Iinclude\$(TARGET)
 
 what:
-	-@echo make all rcc lburg cpp lcc bprint liblcc triple clean clobber
+	-@echo nmake -f makefile.nt all rcc lburg cpp lcc bprint liblcc triple clean clobber
 
-all:: lcc rcc lburg cpp bprint liblcc
+all:: lcc rcc lburg cpp bprint liblcc ops sizes
 
 rcc:	$Brcc$E
 lburg:	$Blburg$E
@@ -26,6 +26,8 @@ cpp:	$Bcpp$E
 lcc:	$Blcc$E
 bprint:	$Bbprint$E
 liblcc:	$Bliblcc$A
+ops:	$Bops$E
+sizes:	$Bsizes$E
 
 RCCOBJS=$Balloc$O \
 	$Bbind$O \
@@ -62,6 +64,7 @@ RCCOBJS=$Balloc$O \
 	$Bsparc$O \
 	$Bstab$O \
 	$Bx86$O \
+	$Bmu$O \
 	$Bx86linux$O
 
 $Brcc$E::	$Bmain$O $Blibrcc$A $(EXTRAOBJS)
@@ -108,6 +111,7 @@ $Balpha$O:	$Balpha.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ $Balpha.c
 $Bmips$O:	$Bmips.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ $Bmips.c
 $Bsparc$O:	$Bsparc.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ $Bsparc.c
 $Bx86$O:	$Bx86.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ $Bx86.c
+$Bmu$O:	$Bmu.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ $Bmu.c
 $Bx86linux$O:	$Bx86linux.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ $Bx86linux.c
 
 $Bdagcheck.c:	$Blburg$E src/dagcheck.md; $Blburg src/dagcheck.md $@
@@ -115,15 +119,18 @@ $Balpha.c:	$Blburg$E src/alpha.md;    $Blburg src/alpha.md    $@
 $Bmips.c:	$Blburg$E src/mips.md;     $Blburg src/mips.md     $@
 $Bsparc.c:	$Blburg$E src/sparc.md;    $Blburg src/sparc.md    $@
 $Bx86.c:	$Blburg$E src/x86.md;      $Blburg src/x86.md      $@
+$Bmu.c:	$Blburg$E src/mu.md;      $Blburg src/mu.md      $@
 $Bx86linux.c:	$Blburg$E src/x86linux.md; $Blburg src/x86linux.md $@
 
-$Bbprint$E:	$Bbprint$O;	$(LD) $(LDFLAGS) -Fe$@ $Bbprint$O 
+$Bbprint$E:	$Bbprint$O;	$(LD) $(LDFLAGS) -Fe$@ $Bbprint$O
 $Bops$E:	$Bops$O;	$(LD) $(LDFLAGS) -Fe$@ $Bops$O
+$Bsizes$E:	$Bsizes$O;	$(LD) $(LDFLAGS) -Fe$@ $Bsizes$O
 
 $Bbprint$O:	etc/bprint.c src/profio.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ etc/bprint.c
 $Bops$O:	etc/ops.c src/ops.h;		$(CC) $(CFLAGS) -c -Isrc -Fo$@ etc/ops.c
+$Bsizes$O:	src/sizes.c;		$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/sizes.c
 
-$Blcc$E:	$Blcc$O $Bhost$O;	$(LD) $(LDFLAGS) -Fe$@ $Blcc$O $Bhost$O 
+$Blcc$E:	$Blcc$O $Bhost$O;	$(LD) $(LDFLAGS) -Fe$@ $Blcc$O $Bhost$O
 
 $Blcc$O:	etc/lcc.c;	$(CC) $(CFLAGS) -c -DTEMPDIR=\"$(TEMPDIR)\" -Fo$@ etc/lcc.c
 $Bhost$O:	$(HOSTFILE);	$(CC) $(CFLAGS) -c -Fo$@ $(HOSTFILE)
@@ -138,7 +145,7 @@ $Bassert$O:	lib/assert.c;	$(CC) -c -Fo$@ lib/assert.c
 $Byynull$O:	lib/yynull.c;	$(CC) -c -Fo$@ lib/yynull.c
 $Bbbexit$O:	lib/bbexit.c;	$(CC) -c -Fo$@ lib/bbexit.c
 
-$Blburg$E:	$Blburg$O $Bgram$O;	$(LD) $(LDFLAGS) -Fe$@ $Blburg$O $Bgram$O 
+$Blburg$E:	$Blburg$O $Bgram$O;	$(LD) $(LDFLAGS) -Fe$@ $Blburg$O $Bgram$O
 
 $Blburg$O $Bgram$O:	lburg/lburg.h
 
@@ -149,7 +156,7 @@ CPPOBJS=$Bcpp$O $Blexer$O $Bnlist$O $Btokens$O $Bmacro$O $Beval$O \
 	$Binclude$O $Bhideset$O $Bgetopt$O $Bunix$O
 
 $Bcpp$E:	$(CPPOBJS)
-		$(LD) $(LDFLAGS) -Fe$@ $(CPPOBJS) 
+		$(LD) $(LDFLAGS) -Fe$@ $(CPPOBJS)
 
 $(CPPOBJS):	cpp/cpp.h
 
@@ -329,12 +336,12 @@ testclean:
 
 clean::		testclean
 		-del /q $B*$O
-		-del /q $Bdagcheck.c $Balpha.c $Bmips.c $Bx86.c $Bsparc.c $Bx86linux.c
+		-del /q $Bdagcheck.c $Balpha.c $Bmips.c $Bx86.c $Bmu.c $Bsparc.c $Bx86linux.c
 		-del /q $Brcc1$E $Brcc1$E $B1rcc$E $B2rcc$E
 		-del /q $B*.ilk
 
 clobber::	clean
-		-del /q $Brcc$E $Blburg$E $Bcpp$E $Blcc$E $Bcp$E $Bbprint$E $Bops$E $B*$A
+		-del /q $Brcc$E $Blburg$E $Bcpp$E $Blcc$E $Bcp$E $Bbprint$E $Bops$E $Bsizes$E $B*$A
 		-del /q $B*.pdb $B*.pch
 
 RCCSRCS=src/alloc.c \
@@ -371,8 +378,9 @@ RCCSRCS=src/alloc.c \
 	$Balpha.c \
 	$Bmips.c \
 	$Bsparc.c \
-	$Bx86linux.c \
-	$Bx86.c
+	$Bx86.c \
+	$Bmu.c \
+	$Bx86linux.c
 
 C=$Blcc -A -d0.6 -Wo-lccdir=$(BUILDDIR) -Isrc -I$(BUILDDIR)
 triple:	$B2rcc$E

@@ -5,7 +5,7 @@
 static char rcsid[] = "$Id$";
 
 #ifndef LCCDIR
-#define LCCDIR "\\progra~1\\lcc\\4.2\\bin\\"
+#define LCCDIR "Debug\\"
 #endif
 
 char *suffixes[] = { ".c;.C", ".i;.I", ".asm;.ASM;.s;.S", ".obj;.OBJ", ".exe", 0 };
@@ -15,7 +15,7 @@ char *cpp[] = { LCCDIR "cpp", "-D__STDC__=1", "-Dwin32", "-D_WIN32", "-D_M_IX86"
 char *include[] = { "-I" LCCDIR "include", 0 };
 char *com[] = { LCCDIR "rcc", "-target=x86/win32", "$1", "$2", "$3", 0 };
 char *as[] = { "ml", "-nologo", "-c", "-Cp", "-coff", "-Fo$3", "$1", "$2", 0 };
-char *ld[] = { "link", "-nologo", 
+char *ld[] = { "link", "-nologo",
 	"", "-subsystem:console", "-entry:mainCRTStartup",
 	"$2", "-OUT:$3", "$1", LCCDIR "liblcc.lib", "oldnames.lib", "libc.lib", "kernel32.lib", 0 };
 

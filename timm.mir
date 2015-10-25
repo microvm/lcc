@@ -1,0 +1,89 @@
+progbeg called
+defsymbol called
+defsymbol called
+defsymbol called
+defsymbol called
+export called
+segment called
+function called
+hello:
+	name->name
+local called
+target called
+target called
+target called
+clobber called
+target called
+clobber called
+//void hello(const char *name) {
+//    char *h = "hello";
+@%L2 = PTRCAST <@_ptr_void @_ptr_ptr_void> %-8
+//}
+%L1:
+defsymbol called
+defsymbol called
+defsymbol called
+defsymbol called
+defsymbol called
+defsymbol called
+defsymbol called
+export called
+function called
+main:
+	argc->argc
+	argv->argv
+target called
+target called
+target called
+target called
+clobber called
+clobber called
+target called
+target called
+clobber called
+target called
+target called
+clobber called
+target called
+clobber called
+doarg called
+target called
+target called
+target called
+target called
+target called
+target called
+target called
+target called
+clobber called
+clobber called
+clobber called
+clobber called
+clobber called
+target called
+target called
+clobber called
+target called
+clobber called
+//int main(int argc, const char *argv[]) {
+//    if (argc < 2)
+%edi_0 = REFCAST <@_ptr_void @_ptr_int> %20
+%edi = LOAD <@int> %edi_0
+emit2 called
+//        return 1;
+RET <@int> @1_int
+BRANCH @%L3
+%L4:
+//    hello(argv[1]);
+%edi_0 = REFCAST <@_ptr_void @_ptr_ptr_void> %24
+%edi = LOAD <@ptr_void> %edi_0
+%edi_0 = REFCAST <@_ptr_void @_ptr_char> edi
+%edi_1 = SHIFTIREF <@char @long> %edi_0 @8_long
+%edi = REFCAST <@_ptr_char @_ptr_void> %edi_1
+%edi_0 = REFCAST <@_ptr_void @_ptr_ptr_void> edi
+%edi = LOAD <@ptr_void> %edi_0
+// pointer arguments unimplemented
+// Call (void) unimplemented
+//    return 0;
+RET <@int> @0_int
+%L3:

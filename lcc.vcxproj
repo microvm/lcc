@@ -1,0 +1,251 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3E4627D3-C187-42B0-8135-34CA7D274C3E}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakeCleanCommandLine>nmake -f makefile.nt clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR="$(Configuration)\\";$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake -f makefile.nt clobber all</NMakeReBuildCommandLine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
+    <NMakeOutput>Debug\rcc.exe</NMakeOutput>
+    <NMakeCleanCommandLine>nmake -f makefile.nt clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR=$(Configuration);$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
+    <NMakeOutput>Debug/rcc.exe</NMakeOutput>
+    <NMakeCleanCommandLine>nmake -f makefile.nt clobber</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
+    <NMakeOutput>Debug\bin\rcc.exe</NMakeOutput>
+    <NMakeCleanCommandLine>nmake -f makefile.nt clobber</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="cpp\cpp.c" />
+    <ClCompile Include="cpp\eval.c" />
+    <ClCompile Include="cpp\getopt.c" />
+    <ClCompile Include="cpp\hideset.c" />
+    <ClCompile Include="cpp\include.c" />
+    <ClCompile Include="cpp\lex.c" />
+    <ClCompile Include="cpp\macro.c" />
+    <ClCompile Include="cpp\nlist.c" />
+    <ClCompile Include="cpp\tokens.c" />
+    <ClCompile Include="cpp\unix.c" />
+    <ClCompile Include="etc\bprint.c" />
+    <ClCompile Include="etc\gcc-solaris.c" />
+    <ClCompile Include="etc\irix.c" />
+    <ClCompile Include="etc\lcc.c" />
+    <ClCompile Include="etc\linux.c" />
+    <ClCompile Include="etc\ops.c" />
+    <ClCompile Include="etc\osf.c" />
+    <ClCompile Include="etc\solaris.c" />
+    <ClCompile Include="etc\win32.c" />
+    <ClCompile Include="lburg\gram-bison.c" />
+    <ClCompile Include="lburg\gram.c" />
+    <ClCompile Include="lburg\lburg.c" />
+    <ClCompile Include="lib\assert.c" />
+    <ClCompile Include="lib\bbexit.c" />
+    <ClCompile Include="lib\yynull.c" />
+    <ClCompile Include="src\alloc.c" />
+    <ClCompile Include="src\bind.c" />
+    <ClCompile Include="src\bytecode.c" />
+    <ClCompile Include="src\dag.c" />
+    <ClCompile Include="src\decl.c" />
+    <ClCompile Include="src\enode.c" />
+    <ClCompile Include="src\error.c" />
+    <ClCompile Include="src\event.c" />
+    <ClCompile Include="src\expr.c" />
+    <ClCompile Include="src\gen.c" />
+    <ClCompile Include="src\init.c" />
+    <ClCompile Include="src\inits.c" />
+    <ClCompile Include="src\input.c" />
+    <ClCompile Include="src\json.c" />
+    <ClCompile Include="src\lex.c" />
+    <ClCompile Include="src\list.c" />
+    <ClCompile Include="src\main.c" />
+    <ClCompile Include="src\mu.c" />
+    <ClCompile Include="src\null.c" />
+    <ClCompile Include="src\output.c" />
+    <ClCompile Include="src\prof.c" />
+    <ClCompile Include="src\profio.c" />
+    <ClCompile Include="src\simp.c" />
+    <ClCompile Include="src\sizes.c" />
+    <ClCompile Include="src\stab.c" />
+    <ClCompile Include="src\stmt.c" />
+    <ClCompile Include="src\string.c" />
+    <ClCompile Include="src\sym.c" />
+    <ClCompile Include="src\symbolic.c" />
+    <ClCompile Include="src\trace.c" />
+    <ClCompile Include="src\tree.c" />
+    <ClCompile Include="src\types.c" />
+    <ClCompile Include="tst\8q-levi.c" />
+    <ClCompile Include="tst\8q.c" />
+    <ClCompile Include="tst\array.c" />
+    <ClCompile Include="tst\cf.c" />
+    <ClCompile Include="tst\cq.c" />
+    <ClCompile Include="tst\cvt.c" />
+    <ClCompile Include="tst\fields.c" />
+    <ClCompile Include="tst\front.c" />
+    <ClCompile Include="tst\incr.c" />
+    <ClCompile Include="tst\init.c" />
+    <ClCompile Include="tst\limits.c" />
+    <ClCompile Include="tst\paranoia.c" />
+    <ClCompile Include="tst\sort.c" />
+    <ClCompile Include="tst\spill.c" />
+    <ClCompile Include="tst\stdarg.c" />
+    <ClCompile Include="tst\struct.c" />
+    <ClCompile Include="tst\switch.c" />
+    <ClCompile Include="tst\timm.c" />
+    <ClCompile Include="tst\wf1.c" />
+    <ClCompile Include="tst\yacc.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cpp\cpp.h" />
+    <ClInclude Include="include\alpha\osf\assert.h" />
+    <ClInclude Include="include\alpha\osf\ctype.h" />
+    <ClInclude Include="include\alpha\osf\errno.h" />
+    <ClInclude Include="include\alpha\osf\float.h" />
+    <ClInclude Include="include\alpha\osf\limits.h" />
+    <ClInclude Include="include\alpha\osf\locale.h" />
+    <ClInclude Include="include\alpha\osf\math.h" />
+    <ClInclude Include="include\alpha\osf\setjmp.h" />
+    <ClInclude Include="include\alpha\osf\signal.h" />
+    <ClInclude Include="include\alpha\osf\stdarg.h" />
+    <ClInclude Include="include\alpha\osf\stddef.h" />
+    <ClInclude Include="include\alpha\osf\stdio.h" />
+    <ClInclude Include="include\alpha\osf\stdlib.h" />
+    <ClInclude Include="include\alpha\osf\string.h" />
+    <ClInclude Include="include\alpha\osf\time.h" />
+    <ClInclude Include="include\mips\irix\assert.h" />
+    <ClInclude Include="include\mips\irix\ctype.h" />
+    <ClInclude Include="include\mips\irix\errno.h" />
+    <ClInclude Include="include\mips\irix\float.h" />
+    <ClInclude Include="include\mips\irix\limits.h" />
+    <ClInclude Include="include\mips\irix\locale.h" />
+    <ClInclude Include="include\mips\irix\math.h" />
+    <ClInclude Include="include\mips\irix\setjmp.h" />
+    <ClInclude Include="include\mips\irix\signal.h" />
+    <ClInclude Include="include\mips\irix\stdarg.h" />
+    <ClInclude Include="include\mips\irix\stddef.h" />
+    <ClInclude Include="include\mips\irix\stdio.h" />
+    <ClInclude Include="include\mips\irix\stdlib.h" />
+    <ClInclude Include="include\mips\irix\string.h" />
+    <ClInclude Include="include\mips\irix\time.h" />
+    <ClInclude Include="include\sparc\solaris\assert.h" />
+    <ClInclude Include="include\sparc\solaris\ctype.h" />
+    <ClInclude Include="include\sparc\solaris\errno.h" />
+    <ClInclude Include="include\sparc\solaris\float.h" />
+    <ClInclude Include="include\sparc\solaris\limits.h" />
+    <ClInclude Include="include\sparc\solaris\locale.h" />
+    <ClInclude Include="include\sparc\solaris\math.h" />
+    <ClInclude Include="include\sparc\solaris\setjmp.h" />
+    <ClInclude Include="include\sparc\solaris\signal.h" />
+    <ClInclude Include="include\sparc\solaris\stdarg.h" />
+    <ClInclude Include="include\sparc\solaris\stddef.h" />
+    <ClInclude Include="include\sparc\solaris\stdio.h" />
+    <ClInclude Include="include\sparc\solaris\stdlib.h" />
+    <ClInclude Include="include\sparc\solaris\string.h" />
+    <ClInclude Include="include\sparc\solaris\time.h" />
+    <ClInclude Include="include\symbolic\irix\assert.h" />
+    <ClInclude Include="include\symbolic\irix\ctype.h" />
+    <ClInclude Include="include\symbolic\irix\errno.h" />
+    <ClInclude Include="include\symbolic\irix\float.h" />
+    <ClInclude Include="include\symbolic\irix\limits.h" />
+    <ClInclude Include="include\symbolic\irix\locale.h" />
+    <ClInclude Include="include\symbolic\irix\math.h" />
+    <ClInclude Include="include\symbolic\irix\setjmp.h" />
+    <ClInclude Include="include\symbolic\irix\signal.h" />
+    <ClInclude Include="include\symbolic\irix\stdarg.h" />
+    <ClInclude Include="include\symbolic\irix\stddef.h" />
+    <ClInclude Include="include\symbolic\irix\stdio.h" />
+    <ClInclude Include="include\symbolic\irix\stdlib.h" />
+    <ClInclude Include="include\symbolic\irix\string.h" />
+    <ClInclude Include="include\symbolic\irix\time.h" />
+    <ClInclude Include="include\x86\linux\assert.h" />
+    <ClInclude Include="include\x86\linux\float.h" />
+    <ClInclude Include="include\x86\linux\limits.h" />
+    <ClInclude Include="include\x86\linux\math.h" />
+    <ClInclude Include="include\x86\linux\stdarg.h" />
+    <ClInclude Include="lburg\lburg.h" />
+    <ClInclude Include="src\c.h" />
+    <ClInclude Include="src\config.h" />
+    <ClInclude Include="src\ops.h" />
+    <ClInclude Include="src\stab.h" />
+    <ClInclude Include="src\token.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="doc\install.html" />
+    <None Include="makefile.nt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
