@@ -1,4 +1,0 @@
-tst\timm.c:15: warning: expression with no effect elided
-tst\timm.c:15: warning: expression with no effect elided
-tst\timm.c:25: warning: expression with no effect elided
-tst\timm.c:25: warning: expression with no effect elided

@@ -1,89 +1,76 @@
-progbeg called
-defsymbol called
-defsymbol called
-defsymbol called
-defsymbol called
-export called
-segment called
-function called
-hello:
-	name->name
-local called
-target called
-target called
-target called
-clobber called
-target called
-clobber called
-//void hello(const char *name) {
+.funcsig @void_func () -> ()
+
+.typedef @void = void
+.typedef @char = int<8>
+.typedef @uchar = int<8>
+.typedef @short = int<16>
+.typedef @ushort = int<16>
+.typedef @int = int<32>
+.typedef @uint = int<32>
+.typedef @long = int<64>
+.typedef @ulong = int<64>
+.typedef @long = int<64>
+.typedef @ulong = int<64>
+.typedef @float = float
+.typedef @double = double
+.typedef @double = double
+.typedef @ptr_void = uptr<@void>
+.typedef @ptr_char = uptr<@char>
+.typedef @ptr_func = ufuncptr<@void_func>
+
+.const @long_0 <@long> = 0
+.const @long_1 <@long> = 1
+.const @float_0.0f <@float> = 0.0f
+.const @float_1.0f <@float> = 1.0f
+.const @double_0.0d <@double> = 0.0d
+.const @double_1.0d <@double> = 1.0d
+.const @ptr_void_NULL <@ptr_void> = NULL
+
+.const @int_8 <@int> = 8
+//export called
+//segment called (1)
+.funcsig @hello_sig = ( @ptr_char ) -> ( @rettype )
+.funcdef @hello VERSION %v1 <@hello_sig> {
+	%entry( <@ptr_char> %name ):
+//void hello(char *name) {
 //    char *h = "hello";
-@%L2 = PTRCAST <@_ptr_void @_ptr_ptr_void> %-8
+%3_h = COMMINST @uvm.native.pin <@char> @2
+%h = PTRCAST <uptr<@char> @ptr_char> %3_h
 //}
-%L1:
-defsymbol called
-defsymbol called
-defsymbol called
-defsymbol called
-defsymbol called
-defsymbol called
-defsymbol called
-export called
-function called
-main:
-	argc->argc
-	argv->argv
-target called
-target called
-target called
-target called
-clobber called
-clobber called
-target called
-target called
-clobber called
-target called
-target called
-clobber called
-target called
-clobber called
-doarg called
-target called
-target called
-target called
-target called
-target called
-target called
-target called
-target called
-clobber called
-clobber called
-clobber called
-clobber called
-clobber called
-target called
-target called
-clobber called
-target called
-clobber called
-//int main(int argc, const char *argv[]) {
-//    if (argc < 2)
-%edi_0 = REFCAST <@_ptr_void @_ptr_int> %20
-%edi = LOAD <@int> %edi_0
-emit2 called
-//        return 1;
-RET <@int> @1_int
-BRANCH @%L3
-%L4:
-//    hello(argv[1]);
-%edi_0 = REFCAST <@_ptr_void @_ptr_ptr_void> %24
-%edi = LOAD <@ptr_void> %edi_0
-%edi_0 = REFCAST <@_ptr_void @_ptr_char> edi
-%edi_1 = SHIFTIREF <@char @long> %edi_0 @8_long
-%edi = REFCAST <@_ptr_char @_ptr_void> %edi_1
-%edi_0 = REFCAST <@_ptr_void @_ptr_ptr_void> edi
-%edi = LOAD <@ptr_void> %edi_0
-// pointer arguments unimplemented
-// Call (void) unimplemented
+	%L1:
+}
+
+.const @int_0 <@int> = 0
+//export called
+.typedef @ptr_ptr_char = uptr<@ptr_char>
+.funcsig @main_sig = ( @int @ptr_ptr_char ) -> ( @rettype )
+.funcdef @main VERSION %v1 <@main_sig> {
+	%entry( <@int> %argc <@ptr_ptr_char> %argv ):
+//int main(int argc, char *argv[]) {
 //    return 0;
-RET <@int> @0_int
-%L3:
+RET @int_0
+	%L4:
+}
+
+//segment called (4)
+.const @char_104 <@char> = 104
+.const @char_101 <@char> = 101
+.const @char_108 <@char> = 108
+.const @char_111 <@char> = 111
+.const @char_0 <@char> = 0
+
+.typedef @arr_char_6 = array< @char 6 >
+@2 = NEW <@arr_char_6>
+@2_iref0 = GETIREF <@arr_char_6> @2
+STORE <@char> @2_iref0 @char_104
+@2_iref1 = SHIFTIREF <@arr_char_6 @long> @2_iref0 @long_1
+STORE <@char> @2_iref1 @char_101
+@2_iref2 = SHIFTIREF <@arr_char_6 @long> @2_iref1 @long_1
+STORE <@char> @2_iref2 @char_108
+@2_iref3 = SHIFTIREF <@arr_char_6 @long> @2_iref2 @long_1
+STORE <@char> @2_iref3 @char_108
+@2_iref4 = SHIFTIREF <@arr_char_6 @long> @2_iref3 @long_1
+STORE <@char> @2_iref4 @char_111
+@2_iref5 = SHIFTIREF <@arr_char_6 @long> @2_iref4 @long_1
+STORE <@char> @2_iref5 @char_0
+@2_iref6 = SHIFTIREF <@arr_char_6 @long> @2_iref5 @long_1

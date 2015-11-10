@@ -1,11 +1,11 @@
 %{
-enum { EAX=0, ECX=1, EDX=2, EBX=3, ESI=6, EDI=7 };
-#include "c.h"
+#include "../src/c.h"
 #define NODEPTR_TYPE Node
 #define OP_LABEL(p) ((p)->op)
 #define LEFT_CHILD(p) ((p)->kids[0])
 #define RIGHT_CHILD(p) ((p)->kids[1])
 #define STATE_LABEL(p) ((p)->x.state)
+
 static void address(Symbol, Symbol, long);
 static void blkfetch(int, int, int, int);
 static void blkloop(int, int, int, int, int, int[]);
@@ -27,13 +27,38 @@ static void progend(void);
 static void segment(int);
 static void space(int);
 static void target(Node);
-static Symbol charreg[32], shortreg[32], intreg[32];
-static Symbol fltreg[32];
-static Symbol charregw, shortregw, intregw, fltregw;
+
+//helper funcs
+//define a new mu type
+static int def_type(Type, char *, char *);
+//get mu name for type
+static char *type_name(Type);
+typedef struct types {
+	Type type;
+	char *name;
+	struct types *next;
+} *Types;
+
+//get or create a const
+static char *const_name(Type, char *);
+typedef struct consts {
+	Type type;
+	char *name;
+	char *val;
+	struct consts *next;
+} *Consts;
+
+static char* indent;
+
+static Types types_head;
+static Consts consts_head;
+
+static Symbol intreg[32], fltreg[32];
+static Symbol intregw, fltregw;
+
+static Symbol g;
 
 static int cseg;
-
-static Symbol quo, rem;
 %}
 
 %start stmt
@@ -163,14 +188,14 @@ static Symbol quo, rem;
 
 float_var:   CNSTF4                        "// Float constant %a"
 double_var:  CNSTF8                        "// Double constant %a"
-char_var:    CNSTI1                        "@%a_char"
-char_var:    CNSTU1                        "@%a_uchar"
-short_var:   CNSTI2                        "@%a_short"
-short_var:   CNSTU2                        "@%a_ushort"
-int_var:     CNSTI4                        "@%a_int"
-int_var:     CNSTU4                        "@%a_uint"
-long_var:    CNSTI8                        "@%a_long"
-long_var:    CNSTU8                        "@%a_ulong"
+char_var:    CNSTI1                        "@char_%a"
+char_var:    CNSTU1                        "@uchar_%a"
+short_var:   CNSTI2                        "@short_%a"
+short_var:   CNSTU2                        "@ushort_%a"
+int_var:     CNSTI4                        "@int_%a"
+int_var:     CNSTU4                        "@uint_%a"
+long_var:    CNSTI8                        "@long_%a"
+long_var:    CNSTU8                        "@ulong_%a"
 ptr:         CNSTP8                        "// constant pointer unimplemented\n"
 stmt:        ARGB(INDIRB(ptr))             "// structure arguments unimplemented\n"
 stmt:        ARGF4(float_var)              "// float arguments unimplemented\n"
@@ -191,7 +216,7 @@ stmt:        ASGNI4(ptr, int_var)          "%%%c = REFCAST <@_ptr_void @_ptr_int
 stmt:        ASGNU4(ptr, int_var)          "%%%c = REFCAST <@_ptr_void @_ptr_int> %0\nSTORE <@int> %%%c %1\n"
 stmt:        ASGNI8(ptr, long_var)         "%%%c = REFCAST <@_ptr_void @_ptr_long> %0\nSTORE <@long> %%%c %1\n"
 stmt:        ASGNU8(ptr, long_var)         "%%%c = REFCAST <@_ptr_void @_ptr_long> %0\nSTORE <@long> %%%c %1\n"
-stmt:        ASGNP8(ptr, ptr)              "%1 = PTRCAST <@_ptr_void @_ptr_ptr_void> %0\n"
+stmt:        ASGNP8(ptr, ptr)              "#%0 = PTRCAST <@_ptr_void @_ptr_ptr_void> %1\n"
 float_var:   INDIRF4(ptr)                  "%%%c_0 = REFCAST <@_ptr_void @_ptr_float> %0\n%%%c = LOAD <@float> %%%c_0\n"
 double_var:  INDIRF8(ptr)                  "%%%c_0 = REFCAST <@_ptr_void @_ptr_double> %0\n%%%c = LOAD <@double> %%%c_0\n"
 char_var:    INDIRI1(ptr)                  "%%%c_0 = REFCAST <@_ptr_void @_ptr_char> %0\n%%%c = LOAD <@char> %%%c_0\n"
@@ -293,16 +318,16 @@ int_var:     CALLU4(ptr)                   "// Call (uint) unimplemented\n"
 long_var:    CALLU8(ptr)                   "// Call (ulong) unimplemented\n"
 stmt:        CALLV(ptr)                    "// Call (void) unimplemented\n"
 
-stmt:        RETF4(float_var)              "RET <@float> %0\n"
-stmt:        RETF8(double_var)             "RET <@double> %0\n"
-stmt:        RETI4(int_var)                "RET <@int> %0\n"
-stmt:        RETI8(long_var)               "RET <@long> %0\n"
-stmt:        RETP8(ptr)                    "RET <@_ptr_void> %0\n"
-stmt:        RETU4(int_var)                "RET <@int> %0\n"
-stmt:        RETU8(long_var)               "RET <@long> %0\n"
-stmt:        RETV                          "RETVOID\n"
+stmt:        RETF4(float_var)              "RET %0\n"
+stmt:        RETF8(double_var)             "RET %0\n"
+stmt:        RETI4(int_var)                "RET %0\n"
+stmt:        RETI8(long_var)               "RET %0\n"
+stmt:        RETP8(ptr)                    "RET %0\n"
+stmt:        RETU4(int_var)                "RET %0\n"
+stmt:        RETU8(long_var)               "RET %0\n"
+stmt:        RETV                          "RET ()\n"
 
-ptr:         ADDRGP8                       "@%%%a"
+ptr:         ADDRGP8                       "@%a"
 ptr:         ADDRLP8                       "%%%a"
 ptr:         ADDRFP8                       "%%%a"
 
@@ -406,89 +431,126 @@ stmt:        NEI8(long_var, long_var)      "%%%c = NE <@long> %0 %1\nBRANCH2 %%%
 stmt:        NEU4(int_var, int_var)        "%%%c = NE <@int> %0 %1\nBRANCH2 %%%c %%%a %%%b\n"
 stmt:        NEU8(long_var, long_var)      "%%%c = NE <@long> %0 %1\nBRANCH2 %%%c %%%a %%%b\n"
 stmt:        JUMPV(ptr)                    "BRANCH %0\n"
-stmt:        LABELV                        "%%%a:\n"
+stmt:        LABELV                        "\t%%%a:\n"
 %%
 static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
-	print("%s called\n", __FUNCTION__);
+	types_head = NULL;
+	consts_head = NULL;
+	print(".funcsig @void_func () -> ()\n\n");
 
-	intreg[EAX] = mkreg("eax", EAX, 1, IREG);
-	intreg[EDX] = mkreg("edx", EDX, 1, IREG);
-	intreg[ECX] = mkreg("ecx", ECX, 1, IREG);
-	intreg[EBX] = mkreg("ebx", EBX, 1, IREG);
-	intreg[ESI] = mkreg("esi", ESI, 1, IREG);
-	intreg[EDI] = mkreg("edi", EDI, 1, IREG);
+	def_type(voidtype, "void", "void");
 
-	shortreg[EAX] = mkreg("ax", EAX, 1, IREG);
-	shortreg[ECX] = mkreg("cx", ECX, 1, IREG);
-	shortreg[EDX] = mkreg("dx", EDX, 1, IREG);
-	shortreg[EBX] = mkreg("bx", EBX, 1, IREG);
-	shortreg[ESI] = mkreg("si", ESI, 1, IREG);
-	shortreg[EDI] = mkreg("di", EDI, 1, IREG);
+	//def_type(, "i1  ", "int<1>");
+	def_type(chartype, "char", "int<8>");
+	def_type(unsignedchar, "uchar", "int<8>");
 
-	charreg[EAX] = mkreg("al", EAX, 1, IREG);
-	charreg[ECX] = mkreg("cl", ECX, 1, IREG);
-	charreg[EDX] = mkreg("dl", EDX, 1, IREG);
-	charreg[EBX] = mkreg("bl", EBX, 1, IREG);
-	for (size_t i = 0; i < 8; i++)
-		fltreg[i] = mkreg("%d", i, 0, FREG);
-	charregw = mkwildcard(charreg);
-	shortregw = mkwildcard(shortreg);
+	def_type(shorttype, "short", "int<16>");
+	def_type(unsignedshort, "ushort", "int<16>");
+
+	def_type(inttype, "int", "int<32>");
+	def_type(unsignedtype, "uint", "int<32>");
+
+	def_type(longtype, "long", "int<64>");
+	def_type(unsignedlong, "ulong", "int<64>");
+	def_type(longlong, "long", "int<64>");
+	def_type(unsignedlonglong, "ulong", "int<64>");
+
+	def_type(floattype, "float", "float");
+	def_type(doubletype, "double", "double");
+	def_type(longdouble, "double", "double");
+
+	def_type(voidptype, "ptr_void", "uptr<@void>");
+	def_type(charptype, "ptr_char", "uptr<@char>");
+	def_type(funcptype, "ptr_func", "ufuncptr<@void_func>");
+
+	print("\n");
+
+	const_name(longtype, "0");
+	const_name(longtype, "1");
+	const_name(floattype, "0.0f");
+	const_name(floattype, "1.0f");
+	const_name(doubletype, "0.0d");
+	const_name(doubletype, "1.0d");
+
+	const_name(voidptype, "NULL");
+
+	print("\n");
+
+	for (size_t i = 0; i < 32; i++)
+		intreg[i] = mkreg("i%d", i, 1, IREG);
+
+	for (size_t i = 0; i < 32; i++)
+		fltreg[i] = mkreg("f%d", i, 0, FREG);
+
 	intregw = mkwildcard(intreg);
 	fltregw = mkwildcard(fltreg);
 
-	tmask[IREG] = (1 << EDI) | (1 << ESI) | (1 << EBX)
-		| (1 << EDX) | (1 << ECX) | (1 << EAX);
-	vmask[IREG] = 0;
-	tmask[FREG] = 0xff;
-	vmask[FREG] = 0;
+	tmask[0] = tmask[1] = ~(unsigned)0;
+	vmask[0] = vmask[1] = 0;
 }
 static void progend(void)
 {
-	print("%s called\n", __FUNCTION__);
 }
 
 static void address(Symbol q, Symbol p, long n)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 
 static void defaddress(Symbol p)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 static void defconst(int suffix, int size, Value v)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 static void defstring(int n, char *str)
 {
-	print("%s called\n", __FUNCTION__);
+	for (size_t i = 0; i < n; i++)
+		const_name(chartype, stringf("%d", str[i]));
+	print("\n");
+	Type t = array(chartype, n, 1);
+	char *type = type_name(t), *name = g->x.name;
+	print("@%s = NEW <@%s>\n", name, type);
+	print("@%s_iref0 = GETIREF <@%s> @%s\n", name, type, name);
+	for (size_t i = 0; i < n; i++)
+		print("STORE <@%s> @%s_iref%d @%s\n@%s_iref%d = SHIFTIREF <@%s @%s> @%s_iref%d @%s\n", type_name(chartype), name, i, const_name(chartype, stringf("%d", str[i])), name, i + 1, type, type_name(longtype), name, i, const_name(longtype, "1"), const_name(chartype, stringf("%d", str[i])));
 }
 static void defsymbol(Symbol p)
 {
-	print("%s called\n", __FUNCTION__);
-	if (p->scope >= LOCAL && p->sclass == STATIC)
-		p->x.name = stringf("L%d", genlabel(1));
+	if (p->generated && p->scope != LABELS)
+		p->x.name = stringf("%s", p->name);
 	else if (p->generated)
 		p->x.name = stringf("L%s", p->name);
-	else if (p->scope == GLOBAL || p->sclass == EXTERN)
-		p->x.name = stringf("_%s", p->name);
-	else if (p->scope == CONSTANTS && (isint(p->type) || isptr(p->type)) && p->name[0] == '0' && p->name[1] == 'x')
-		p->x.name = stringf("0%sH", &p->name[2]);
+	else if (p->scope >= LOCAL)
+		p->x.name = stringf("%d_%s", p->scope, p->name);
 	else
 		p->x.name = p->name;
+
+	if (p->type && isscalar(p->type))
+		const_name(p->type, p->name);
 }
 
 static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 {
 	usedmask[0] = usedmask[1] = 0;
 	freemask[0] = freemask[1] = ~(unsigned)0;
-	print("%s called\n", __FUNCTION__);
-	print("%s:\n", f->name);
+	for (size_t i = 0; caller[i]; i++)
+		type_name(caller[i]->type);
 	for (size_t i = 0; callee[i]; i++)
-		print("\t%s->%s\n", caller[i]->name, callee[i]->name);
+		type_name(callee[i]->type);
+	print(".funcsig @%s_sig = ( ", f->name);
+	for (size_t i = 0; callee[i]; i++)
+		print("@%s ", type_name(caller[i]->type));
+	print(") -> ( @%s )\n", "rettype");
+	print(".funcdef @%s VERSION %%v1 <@%s_sig> {\n", f->name, f->name);
+	print("\t%%entry( ");
+	for (size_t i = 0; callee[i]; i++)
+		print("<@%s> %%%s ", type_name(caller[i]->type), caller[i]->name);
+	print("):\n");
 	offset = 16 + 4;
 	for (size_t i = 0; callee[i]; i++) {
 		Symbol p = callee[i];
@@ -500,54 +562,56 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	}
 	offset = maxoffset = 0;
 	gencode(caller, callee);
-	fflush(stdout);
 	emitcode();
-	fflush(stdout);
+	//TODO: add a flag so I know if I need to add a RET ()
+	//TODO: unpin all pinned objects
+	print("}\n\n");
 }
 
 static void import(Symbol p)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 static void export(Symbol p)
 {
-	print("%s called\n", __FUNCTION__);
+	//TODO: implement this?
+	print("//%s called\n", __FUNCTION__);
 }
 static void global(Symbol p)
 {
-	print("%s called\n", __FUNCTION__);
+	g = p;
+	if (isptr(p->type))
+		print("is ptr");
 }
 static void local(Symbol p)
 {
-	print("%s called\n", __FUNCTION__);
+	//TODO: print/store var decl here
 	p->sclass = AUTO;
 	offset = roundup(offset + p->type->size, p->type->align < 4 ? 4 : p->type->align);
 	p->x.offset = -offset;
-	p->x.name = stringd(-offset);
+	p->x.name = p->name;
+
+	//print("//%%%s <%s>\n", p->name, type_name(p->type));
 }
 
 static void segment(int n)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called (%d)\n", __FUNCTION__, n);
 }
 
 static void space(int n)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 
 //XInterface funcs
 static Symbol rmap(int opk) {
 	switch (optype(opk)) {
-	case B: case P:
+	case B:
+	case P:
+	case I:
+	case U:
 		return intregw;
-	case I: case U:
-		if (opsize(opk) == 1)
-			return charregw;
-		else if (opsize(opk) == 2)
-			return shortregw;
-		else
-			return intregw;
 	case F:
 		return fltregw;
 	default:
@@ -557,62 +621,144 @@ static Symbol rmap(int opk) {
 
 static void blkfetch(int k, int off, int reg, int tmp)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 static void blkstore(int k, int off, int reg, int tmp)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 static void blkloop(int dreg, int doff, int sreg, int soff, int size, int tmps[])
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 }
 
 static void emit2(Node p)
 {
-	print("%s called\n", __FUNCTION__);
+	Symbol s1, s2;
+	Node k1, k2;
+	switch (specific(p->op))
+	{
+	//TODO: unpin stuff at func exit
+	case ASGN + P:
+		s1 = p->kids[0]->syms[0];
+		s2 = p->kids[1]->syms[0];
+		if (isarray(s2->type)) {
+			Type t = s2->type;
+			while (isarray(t))
+				t = t->type;
+			//TODO: if array is generated then copy it to new location
+			char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
+			print("%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
+			print("%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
+		} else {
+			print("%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
+		}
+		break;
+	default:
+		print("//OP %d NOT RECOGNIZED\n", p->op);
+		break;
+	}
 }
 static void doarg(Node p)
 {
-	print("%s called\n", __FUNCTION__);
+	print("//%s called\n", __FUNCTION__);
 	mkactual(4, p->syms[0]->u.c.v.i);
 }
-static void target(Node p)
-{
-	print("%s called\n", __FUNCTION__);
-}
-static void clobber(Node p)
-{
-	print("%s called\n", __FUNCTION__);
-	static int nstack = 0;
+static void target(Node p) {}
+static void clobber(Node p) {}
 
-	assert(p);
-	nstack = ckstack(p, nstack);
-	switch (specific(p->op)) {
-	case RSH + I: case RSH + U: case LSH + I: case LSH + U:
-		if (generic(p->kids[1]->op) != CNST &&
-			 !(generic(p->kids[1]->op) == INDIR &&
-				specific(p->kids[1]->kids[0]->op) == VREG + P &&
-				p->kids[1]->syms[RX]->u.t.cse &&
-				generic(p->kids[1]->syms[RX]->u.t.cse->op) == CNST)) {
-			spill(1 << ECX, 1, p);
+static int def_type(Type t, char *name, char *mu_t) {
+	Types ts, n;
+	Type ts_tmp, t_tmp;
+	if (isptr(t)) {
+		for (ts = types_head; ts; ts = ts->next) {
+			n = ts;
+			if (!isptr(ts->type)) continue;
+			ts_tmp = ts->type;
+			t_tmp = t;
+			while (isptr(ts_tmp) && isptr(t_tmp))
+			{
+				ts_tmp = ts_tmp->type;
+				t_tmp = t_tmp->type;
+			}
+			if (ts_tmp->u.sym == t_tmp->u.sym)
+				return -1;
 		}
-		break;
-	case ASGN + B: case ARG + B:
-		spill(1 << ECX | 1 << ESI | 1 << EDI, IREG, p);
-		break;
-	case EQ + F: case LE + F: case GE + F: case LT + F: case GT + F: case NE + F:
-		spill(1 << EAX, IREG, p);
-		if (specific(p->op) == EQ + F)
-			p->syms[1] = findlabel(genlabel(1));
-		break;
-	case CALL + F:
-		spill(1 << EDX | 1 << EAX | 1 << ECX, IREG, p);
-		break;
-	case CALL + I: case CALL + U: case CALL + P: case CALL + V:
-		spill(1 << EDX | 1 << ECX, IREG, p);
-		break;
+	} else {
+		for (ts = types_head; ts; ts = ts->next) {
+			n = ts;
+			if (ts->type->u.sym == t->u.sym)
+				return -1;
+		}
 	}
+
+	ts = n;
+	NEW0(n, PERM);
+	if (ts)
+		ts->next = n;
+	else
+		types_head = n;
+	n->name = stringf("%s", name);
+	n->type = t;
+	print(".typedef @%s = %s\n", n->name, mu_t);
+	return 0;
+}
+
+static char *type_name(Type t) {
+	Types ts;
+	Type ts_tmp, t_tmp;
+	if (isptr(t)) {
+		for (ts = types_head; ts; ts = ts->next) {
+			if (!isptr(ts->type)) continue;
+			ts_tmp = ts->type;
+			t_tmp = t;
+			while (isptr(ts_tmp) && isptr(t_tmp))
+			{
+				ts_tmp = ts_tmp->type;
+				t_tmp = t_tmp->type;
+			}
+			if (ts_tmp->u.sym == t_tmp->u.sym)
+				return ts->name;
+		}
+		char *name = stringf("%s_%s", "ptr", type_name(t->type));
+		def_type(t, name, stringf("uptr<@%s>", type_name(t->type)));
+		return name;
+	} else if (isarray(t)) {
+		for (ts = types_head; ts; ts = ts->next)
+			if (ts->type->u.sym == t->u.sym)
+				return ts->name;
+		char *name = stringf("arr_%s_%d", type_name(t->type), t->size);
+		def_type(t, name, stringf("array< @%s %d >", type_name(t->type), t->size));
+		return name;
+	} else {
+		for (ts = types_head; ts; ts = ts->next)
+			if (ts->type->u.sym == t->u.sym)
+				return ts->name;
+	}
+	assert(0);
+	return NULL;
+}
+
+static char *const_name(Type t, char *val) {
+	char *tn = type_name(t), *v = string(val);
+	Consts c = consts_head, n;
+	for (c = consts_head; c; c = c->next) {
+		n = c;
+		if (c->type == t && c->val == v)
+			return c->name;
+	}
+	c = n;
+	NEW0(n, PERM);
+	if (consts_head)
+		c->next = n;
+	else
+		consts_head = n;
+
+	n->name = stringf("%s_%s", tn, v);
+	n->val = v;
+	n->type = t;
+	print(".const @%s <@%s> = %s\n", n->name, tn, v);
+	return n->name;
 }
 
 Interface muIR = {
@@ -653,8 +799,8 @@ Interface muIR = {
     space,
     0, 0, 0, 0, 0, 0, 0,
     {
-        1,              //unsigned char max_unaligned_load;
-        rmap,           //Symbol(*rmap)(int);
+    1,              //unsigned char max_unaligned_load;
+    rmap,           //Symbol(*rmap)(int);
     blkfetch,       //void(*blkfetch)(int size, int off, int reg, int tmp);
     blkstore,       //void(*blkstore)(int size, int off, int reg, int tmp);
     blkloop,        //void(*blkloop)(int dreg, int doff, int sreg, int soff, int size, int tmps[]);

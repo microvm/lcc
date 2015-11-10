@@ -63,7 +63,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
     <NMakeCleanCommandLine>nmake -f makefile.nt clean</NMakeCleanCommandLine>
