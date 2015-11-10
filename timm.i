@@ -1,8 +1,11 @@
 #line 1 "tst\timm.c"
 void hello(char *name) {
-    char *h = "hello";
+	char *h = "hello";
 }
 
 int main(int argc, char *argv[]) {
-    return 0;
+	if (argc < 2)
+		return 1;
+	hello(argv[1]);
+	return 0;
 }
