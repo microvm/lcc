@@ -22,11 +22,12 @@ static void function(Symbol, Symbol[], Symbol[], int);
 static void global(Symbol);
 static void import(Symbol);
 static void local(Symbol);
-static void progbeg(int, char **);
+static void progbeg(int, char *[]);
 static void progend(void);
 static void segment(int);
 static void space(int);
 static void target(Node);
+static Node mugen(Node);
 
 //helper funcs
 //define a new mu type
@@ -101,13 +102,6 @@ static void progbeg(int argc, char *argv[])
 
 	print("\n");
 
-	const_name(longtype, "0");
-	const_name(longtype, "1");
-	const_name(floattype, "0.0f");
-	const_name(floattype, "1.0f");
-	const_name(doubletype, "0.0d");
-	const_name(doubletype, "1.0d");
-
 	const_name(voidptype, "NULL");
 
 	print("\n");
@@ -124,9 +118,7 @@ static void progbeg(int argc, char *argv[])
 	tmask[0] = tmask[1] = ~(unsigned)0;
 	vmask[0] = vmask[1] = 0;
 }
-static void progend(void)
-{
-}
+static void progend(void) {}
 
 static void address(Symbol q, Symbol p, long n)
 {
@@ -179,7 +171,7 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	print(".funcsig @%s_sig = ( ", f->name);
 	for (size_t i = 0; callee[i]; i++)
 		print("@%s ", type_name(caller[i]->type));
-	print(") -> ( @%s )\n", "rettype");
+	print(") -> ( @%s )\n", type_name(f->type->u.f.proto[0]));
 	print(".funcdef @%s VERSION %%v1 <@%s_sig> {\n", f->name, f->name);
 	print("\t%%entry( ");
 	for (size_t i = 0; callee[i]; i++)
@@ -197,7 +189,6 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	offset = maxoffset = 0;
 	gencode(caller, callee);
 	emitcode();
-	//TODO: add a flag so I know if I need to add a RET ()
 	//TODO: unpin all pinned objects
 	print("}\n\n");
 }
@@ -238,6 +229,17 @@ static void space(int n)
 	print("//%s called\n", __FUNCTION__);
 }
 
+/*
+ TODO: (list)
+	0. add sym to store condition results
+	1. remove branches after returns
+	2. remove labels at end of functions or add default return val
+	3. add RETV to all funcs that don't explicitly return (possibly sixed by 2)
+ */
+static Node mugen(Node forest) {
+	return gen(forest);
+}
+
 //XInterface funcs
 static Symbol rmap(int opk) {
 	switch (optype(opk)) {
@@ -270,8 +272,7 @@ static void emit2(Node p)
 {
 	Symbol s1, s2;
 	Node k1, k2;
-	switch (specific(p->op))
-	{
+	switch (specific(p->op)) {
 	//TODO: unpin stuff at func exit
 	case ASGN + P:
 		s1 = p->kids[0]->syms[0];
@@ -282,10 +283,10 @@ static void emit2(Node p)
 				t = t->type;
 			//TODO: if array is generated then copy it to new location
 			char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
-			print("%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
-			print("%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
+			print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
+			print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
 		} else {
-			print("%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
+			print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
 		}
 		break;
 	default:
@@ -295,12 +296,13 @@ static void emit2(Node p)
 }
 static void doarg(Node p)
 {
-	print("//%s called\n", __FUNCTION__);
+	//print("//%s called\n", __FUNCTION__);
 	mkactual(4, p->syms[0]->u.c.v.i);
 }
 static void target(Node p) {}
 static void clobber(Node p) {}
 
+//helper funcs
 static int def_type(Type t, char *name, char *mu_t) {
 	Types ts, n;
 	Type ts_tmp, t_tmp;
@@ -310,8 +312,7 @@ static int def_type(Type t, char *name, char *mu_t) {
 			if (!isptr(ts->type)) continue;
 			ts_tmp = ts->type;
 			t_tmp = t;
-			while (isptr(ts_tmp) && isptr(t_tmp))
-			{
+			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
 				t_tmp = t_tmp->type;
 			}
@@ -346,8 +347,7 @@ static char *type_name(Type t) {
 			if (!isptr(ts->type)) continue;
 			ts_tmp = ts->type;
 			t_tmp = t;
-			while (isptr(ts_tmp) && isptr(t_tmp))
-			{
+			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
 				t_tmp = t_tmp->type;
 			}

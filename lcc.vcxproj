@@ -99,6 +99,7 @@
     <ClCompile Include="cpp\nlist.c" />
     <ClCompile Include="cpp\tokens.c" />
     <ClCompile Include="cpp\unix.c" />
+    <ClCompile Include="Debug\mu.c" />
     <ClCompile Include="etc\bprint.c" />
     <ClCompile Include="etc\gcc-solaris.c" />
     <ClCompile Include="etc\irix.c" />
@@ -131,7 +132,7 @@
     <ClCompile Include="src\lex.c" />
     <ClCompile Include="src\list.c" />
     <ClCompile Include="src\main.c" />
-    <ClCompile Include="src\mu.c" />
+    <ClCompile Include="src\_mu.c" />
     <ClCompile Include="src\null.c" />
     <ClCompile Include="src\output.c" />
     <ClCompile Include="src\prof.c" />
@@ -244,6 +245,11 @@
   <ItemGroup>
     <None Include="doc\install.html" />
     <None Include="makefile.nt" />
+    <None Include="src\mu.md" />
+    <None Include="timm.mir" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="mu_d.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

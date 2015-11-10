@@ -243,7 +243,10 @@
     <ClCompile Include="src\sizes.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\mu.c">
+    <ClCompile Include="src\_mu.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Debug\mu.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -468,5 +471,10 @@
   <ItemGroup>
     <None Include="doc\install.html" />
     <None Include="makefile.nt" />
+    <None Include="src\mu.md" />
+    <None Include="timm.mir" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="mu_d.txt" />
   </ItemGroup>
 </Project>

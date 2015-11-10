@@ -6,3 +6,5 @@ bld
 Debug
 .vs
 lcc.sdf
+lcc.opensdf
+*.mir
