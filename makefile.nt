@@ -1,15 +1,14 @@
 # $Id$
-BUILDDIR=Debug
 HOSTFILE=etc/win32.c
 TARGET=x86\win32
 TEMPDIR=\\temp
 A=.lib
 O=.obj
 E=.exe
-CC=cl -nologo
-CFLAGS=-DWIN32 -Zi -Fd$(BUILDDIR)^\
-LD=cl -nologo
-LDFLAGS=-Zi -Fd$(BUILDDIR)^\
+CC=cl /nologo
+CFLAGS=/DWIN32 /Zi /Fd$(BUILDDIR)^\ $(FLAGS)
+LD=cl /nologo
+LDFLAGS=/Zi /Fd$(BUILDDIR)^\ $(FLAGS)
 TSTDIR=$(BUILDDIR)\$(TARGET)\tst
 B=$(BUILDDIR)^\
 T=$(TSTDIR)^\

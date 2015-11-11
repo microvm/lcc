@@ -4,6 +4,7 @@ CMakeLists.txt
 bld
 .idea
 Debug
+Release
 .vs
 lcc.sdf
 lcc.opensdf

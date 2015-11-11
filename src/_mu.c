@@ -49,23 +49,13 @@ typedef struct consts {
 	struct consts *next;
 } *Consts;
 
-typedef struct locals {
-	Symbol s;
-	struct locals *next;
-} *Locals;
-
-static char* indent;
-
 static Types types_head;
 static Consts consts_head;
-static Locals locals_head;
 
 static Symbol intreg[32], fltreg[32];
 static Symbol intregw, fltregw;
 
 static Symbol g;
-
-static int cseg;
 
 //The following is copied from the last section of mu.md so that I can use autocomplete, etc when editing it
 static void progbeg(int argc, char *argv[])
@@ -182,7 +172,7 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 		Symbol p = callee[i];
 		Symbol q = caller[i];
 		p->x.offset = q->x.offset = offset;
-		p->x.name = q->x.name = stringf("%d", p->x.offset);
+		p->x.name = q->x.name = p->name;
 		p->sclass = q->sclass = AUTO;
 		offset += roundup(q->type->size, 4);
 	}
@@ -195,11 +185,12 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 
 static void import(Symbol p)
 {
+	//TODO: implement import?
 	print("//%s called\n", __FUNCTION__);
 }
 static void export(Symbol p)
 {
-	//TODO: implement this?
+	//TODO: implement export?
 	print("//%s called\n", __FUNCTION__);
 }
 static void global(Symbol p)
@@ -210,19 +201,11 @@ static void global(Symbol p)
 }
 static void local(Symbol p)
 {
-	//TODO: print/store var decl here
 	p->sclass = AUTO;
-	offset = roundup(offset + p->type->size, p->type->align < 4 ? 4 : p->type->align);
-	p->x.offset = -offset;
 	p->x.name = p->name;
-
-	//print("//%%%s <%s>\n", p->name, type_name(p->type));
 }
 
-static void segment(int n)
-{
-	print("//%s called (%d)\n", __FUNCTION__, n);
-}
+static void segment(int n) {}
 
 static void space(int n)
 {
@@ -230,13 +213,33 @@ static void space(int n)
 }
 
 /*
- TODO: (list)
-	0. add sym to store condition results
-	1. remove branches after returns
+ * Generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch)
+ */
+static void mugen_cond(Node p) {
+	if (p == NULL)
+		return;
+	int op = generic(p->op);
+	if (op == GT || op == GE || op == EQ || op == NE || op == LE || op == LT) {
+		p->syms[1] = newtemp(AUTO, optype(p->op), opsize(p->op));
+		p->syms[1]->x.name = stringf("cond_%s", p->syms[1]->name);
+		p->syms[2] = findlabel(genlabel(1));
+		p->kids[2] = newnode(LABEL + V, NULL, NULL, p->syms[2]);
+	}
+	mugen_cond(p->kids[0]);
+	mugen_cond(p->kids[1]);
+}
+
+/*
+ TODO: <list>
+	1. remove lables after returns
 	2. remove labels at end of functions or add default return val
-	3. add RETV to all funcs that don't explicitly return (possibly sixed by 2)
+	3. add RETV to all funcs that don't explicitly return (possibly fixed by 2)
  */
 static Node mugen(Node forest) {
+	for (Node p = forest; p; p = p->link) {
+		mugen_cond(p);
+	}
+
 	return gen(forest);
 }
 
@@ -281,7 +284,7 @@ static void emit2(Node p)
 			Type t = s2->type;
 			while (isarray(t))
 				t = t->type;
-			//TODO: if array is generated then copy it to new location
+			//TODO: if array is generated (not declared global) then copy it to new location
 			char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
 			print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
 			print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
@@ -294,20 +297,22 @@ static void emit2(Node p)
 		break;
 	}
 }
-static void doarg(Node p)
-{
-	//print("//%s called\n", __FUNCTION__);
-	mkactual(4, p->syms[0]->u.c.v.i);
+static void doarg(Node p) {
+	print("//%s called\n", __FUNCTION__);
 }
-static void target(Node p) {}
-static void clobber(Node p) {}
+static void target(Node p) {
+	print("//%s called\n", __FUNCTION__);
+}
+static void clobber(Node p) {
+	print("//%s called\n", __FUNCTION__);
+}
 
 //helper funcs
 static int def_type(Type t, char *name, char *mu_t) {
-	Types ts, n;
-	Type ts_tmp, t_tmp;
+	Types ts = NULL, n = NULL;
 	if (isptr(t)) {
 		for (ts = types_head; ts; ts = ts->next) {
+			Type ts_tmp, t_tmp;
 			n = ts;
 			if (!isptr(ts->type)) continue;
 			ts_tmp = ts->type;
@@ -354,9 +359,10 @@ static char *type_name(Type t) {
 			if (ts_tmp->u.sym == t_tmp->u.sym)
 				return ts->name;
 		}
-		char *name = stringf("%s_%s", "ptr", type_name(t->type));
+		char *name = stringf("ptr_%s", type_name(t->type));
 		def_type(t, name, stringf("uptr<@%s>", type_name(t->type)));
 		return name;
+		assert(0);
 	} else if (isarray(t)) {
 		for (ts = types_head; ts; ts = ts->next)
 			if (ts->type->u.sym == t->u.sym)
@@ -364,12 +370,13 @@ static char *type_name(Type t) {
 		char *name = stringf("arr_%s_%d", type_name(t->type), t->size);
 		def_type(t, name, stringf("array< @%s %d >", type_name(t->type), t->size));
 		return name;
+		assert(0);
 	} else {
 		for (ts = types_head; ts; ts = ts->next)
 			if (ts->type->u.sym == t->u.sym)
 				return ts->name;
+		assert(0);
 	}
-	assert(0);
 	return NULL;
 }
 

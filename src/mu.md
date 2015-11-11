@@ -188,73 +188,73 @@ static int cseg;
 
 %term LABELV=600
 %%
-stmt:        ARGB(INDIRB(ptr))             "\t\t// structure arguments unimplemented\n"
-stmt:        ARGF4(float_var)              "\t\t// float arguments unimplemented\n"
-stmt:        ARGF8(double_var)             "\t\t// double arguments unimplemented\n"
-stmt:        ARGI4(int_var)                "\t\t// int arguments unimplemented\n"
-stmt:        ARGI8(long_var)               "\t\t// long arguments unimplemented\n"
-stmt:        ARGP8(ptr)                    "\t\t// pointer arguments unimplemented\n"
-stmt:        ARGU4(int_var)                "\t\t// int arguments unimplemented\n"
-stmt:        ARGU8(long_var)               "\t\t// long arguments unimplemented\n"
+stmt:        ARGB(INDIRB(ptr))             "#\t\t// structure arguments unimplemented\n"
+stmt:        ARGF4(float_var)              "#\t\t// float arguments unimplemented\n"
+stmt:        ARGF8(double_var)             "#\t\t// double arguments unimplemented\n"
+stmt:        ARGI4(int_var)                "#\t\t// int arguments unimplemented\n"
+stmt:        ARGI8(long_var)               "#\t\t// long arguments unimplemented\n"
+stmt:        ARGP8(ptr)                    "#\t\t// pointer arguments unimplemented\n"
+stmt:        ARGU4(int_var)                "#\t\t// int arguments unimplemented\n"
+stmt:        ARGU8(long_var)               "#\t\t// long arguments unimplemented\n"
 
 stmt:        ASGNB(ptr, INDIRB(ptr))       "\t\t// assignment to structure unimplemented\n"
-stmt:        ASGNF4(ptr, float_var)        "#		"
-stmt:        ASGNF8(ptr, double_var)       "#		"
-stmt:        ASGNI1(ptr, char_var)         "#		"
-stmt:        ASGNI2(ptr, short_var)        "#		"
-stmt:        ASGNI4(ptr, int_var)          "#		"
-stmt:        ASGNI8(ptr, long_var)         "#		"
-stmt:        ASGNP8(ptr, ptr)              "#		%0 = PTRCAST <@_ptr_void @_ptr_ptr_void> %1\n"
-stmt:        ASGNU1(ptr, char_var)         "#		"
-stmt:        ASGNU2(ptr, short_var)        "#		"
-stmt:        ASGNU4(ptr, int_var)          "#		"
-stmt:        ASGNU8(ptr, long_var)         "#		"
+stmt:        ASGNF4(ptr, float_var)        "#		\n"
+stmt:        ASGNF8(ptr, double_var)       "#		\n"
+stmt:        ASGNI1(ptr, char_var)         "#		\n"
+stmt:        ASGNI2(ptr, short_var)        "#		\n"
+stmt:        ASGNI4(ptr, int_var)          "#		\n"
+stmt:        ASGNI8(ptr, long_var)         "#		\n"
+stmt:        ASGNP8(ptr, ptr)              "#		%0 = PTRCAST <@typeof_1 @typeof_2> %1\n"
+stmt:        ASGNU1(ptr, char_var)         "#		\n"
+stmt:        ASGNU2(ptr, short_var)        "#		\n"
+stmt:        ASGNU4(ptr, int_var)          "#		\n"
+stmt:        ASGNU8(ptr, long_var)         "#		\n"
 
-stmt:        LTI4(int_var, int_var)        "#		"
-stmt:        LTU4(int_var, int_var)        "#		"
-stmt:        LTI8(long_var, long_var)      "#		"
-stmt:        LTU8(long_var, long_var)      "#		"
-stmt:        LTF4(float_var, float_var)    "#		"
-stmt:        LTF8(double_var, double_var)  "#		"
+stmt:        LTI4(int_var, int_var)        "#		\n"
+stmt:        LTU4(int_var, int_var)        "#		\n"
+stmt:        LTI8(long_var, long_var)      "#		\n"
+stmt:        LTU8(long_var, long_var)      "#		\n"
+stmt:        LTF4(float_var, float_var)    "#		\n"
+stmt:        LTF8(double_var, double_var)  "#		\n"
 
-stmt:        LEI4(int_var, int_var)        "#		"
-stmt:        LEU4(int_var, int_var)        "#		"
-stmt:        LEI8(long_var, long_var)      "#		"
-stmt:        LEU8(long_var, long_var)      "#		"
-stmt:        LEF4(float_var, float_var)    "#		"
-stmt:        LEF8(double_var, double_var)  "#		"
+stmt:        LEI4(int_var, int_var)        "#		\n"
+stmt:        LEU4(int_var, int_var)        "#		\n"
+stmt:        LEI8(long_var, long_var)      "#		\n"
+stmt:        LEU8(long_var, long_var)      "#		\n"
+stmt:        LEF4(float_var, float_var)    "#		\n"
+stmt:        LEF8(double_var, double_var)  "#		\n"
 
-stmt:        EQI4(int_var, int_var)        "#		"
-stmt:        EQU4(int_var, int_var)        "#		"
-stmt:        EQI8(long_var, long_var)      "#		"
-stmt:        EQU8(long_var, long_var)      "#		"
-stmt:        EQF4(float_var, float_var)    "#		"
-stmt:        EQF8(double_var, double_var)  "#		"
+stmt:        EQI4(int_var, int_var)        "#		\n"
+stmt:        EQU4(int_var, int_var)        "#		\n"
+stmt:        EQI8(long_var, long_var)      "#		\n"
+stmt:        EQU8(long_var, long_var)      "#		\n"
+stmt:        EQF4(float_var, float_var)    "#		\n"
+stmt:        EQF8(double_var, double_var)  "#		\n"
 
-stmt:        GEI4(int_var, int_var)        "#		%%%c = SGE <@int> %0 %1\nBRANCH2 %%%c %%%a %%%b\n"
-stmt:        GEU4(int_var, int_var)        "#		"
-stmt:        GEI8(long_var, long_var)      "#		%%%c = SGE <@long> %0 %1\nBRANCH2 %%%c %%%a %%%b\n"
-stmt:        GEU8(long_var, long_var)      "#		"
-stmt:        GEF4(float_var, float_var)    "#		"
-stmt:        GEF8(double_var, double_var)  "#		"
+stmt:        GEI4(int_var, int_var)        "\t\t%%%b = SGE <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:        GEU4(int_var, int_var)        "#		\n"
+stmt:        GEI8(long_var, long_var)      "#		%%%c = SGE <@long> %0 %1\n\t\tBRANCH2 %%%c %%%a %%%b\n"
+stmt:        GEU8(long_var, long_var)      "#		\n"
+stmt:        GEF4(float_var, float_var)    "#		\n"
+stmt:        GEF8(double_var, double_var)  "#		\n"
 
-stmt:        GTI4(int_var, int_var)        "#		"
-stmt:        GTU4(int_var, int_var)        "#		"
-stmt:        GTI8(long_var, long_var)      "#		"
-stmt:        GTU8(long_var, long_var)      "#		"
-stmt:        GTF4(float_var, float_var)    "#		"
-stmt:        GTF8(double_var, double_var)  "#		"
+stmt:        GTI4(int_var, int_var)        "#		\n"
+stmt:        GTU4(int_var, int_var)        "#		\n"
+stmt:        GTI8(long_var, long_var)      "#		\n"
+stmt:        GTU8(long_var, long_var)      "#		\n"
+stmt:        GTF4(float_var, float_var)    "#		\n"
+stmt:        GTF8(double_var, double_var)  "#		\n"
 
-stmt:        NEI4(int_var, int_var)        "#		"
-stmt:        NEU4(int_var, int_var)        "#		"
-stmt:        NEI8(long_var, long_var)      "#		"
-stmt:        NEU8(long_var, long_var)      "#		"
-stmt:        NEF4(float_var, float_var)    "#		"
-stmt:        NEF8(double_var, double_var)  "#		"
+stmt:        NEI4(int_var, int_var)        "#		\n"
+stmt:        NEU4(int_var, int_var)        "#		\n"
+stmt:        NEI8(long_var, long_var)      "#		\n"
+stmt:        NEU8(long_var, long_var)      "#		\n"
+stmt:        NEF4(float_var, float_var)    "#		\n"
+stmt:        NEF8(double_var, double_var)  "#		\n"
 
-stmt:        CALLV(ptr)                    "\t\t// Call (void) unimplemented\n"
+stmt:        CALLV(ptr)                    "#\t\t// Call (void) unimplemented\n"
 stmt:        JUMPV(ptr)                    "\t\tBRANCH %0\n"
-stmt:        LABELV                        "\t@%a:\n"
+stmt:        LABELV                        "\t%%%a:\n"
 stmt:        RETF4(float_var)              "\t\tRET %0\n"
 stmt:        RETF8(double_var)             "\t\tRET %0\n"
 stmt:        RETI4(int_var)                "\t\tRET %0\n"
@@ -280,7 +280,9 @@ char_var:    CVUI1(short_var)              "#		"
 char_var:    CVUU1(int_var)                "#		"
 char_var:    CVUU1(long_var)               "#		"
 char_var:    CVUU1(short_var)              "#		"
+char_var:    INDIRI1(arg)                  "%0"
 char_var:    INDIRI1(ptr)                  "#		"
+char_var:    INDIRU1(arg)                  "%0"
 char_var:    INDIRU1(ptr)                  "#		"
 
 short_var:   CNSTI2                        "@short_%a"
@@ -299,7 +301,9 @@ short_var:   CVUI2(short_var)              "#		"
 short_var:   CVUU2(char_var)               "#		"
 short_var:   CVUU2(int_var)                "#		"
 short_var:   CVUU2(long_var)               "#		"
+short_var:   INDIRI2(arg)                  "%0"
 short_var:   INDIRI2(ptr)                  "#		"
+short_var:   INDIRU2(ptr)                  "%0"
 short_var:   INDIRU2(ptr)                  "#		"
 
 int_var:     ADDI4(int_var, int_var)       "#		"
@@ -311,8 +315,8 @@ int_var:     BCOMU4(int_var)               "#		"
 int_var:     BORI4(int_var)                "#		"
 int_var:     BORU4(int_var)                "#		"
 int_var:     BXORI4(int_var)               "#		"
-int_var:     CALLI4(ptr)                   "\t\t// Call (int) unimplemented\n"
-int_var:     CALLU4(ptr)                   "\t\t// Call (uint) unimplemented\n"
+int_var:     CALLI4(ptr)                   "\t\t// Call (int) unimplemented"
+int_var:     CALLU4(ptr)                   "\t\t// Call (uint) unimplemented"
 int_var:     CNSTI4                        "@int_%a"
 int_var:     CNSTU4                        "@uint_%a"
 int_var:     CVFI4(double_var)             "#		"
@@ -333,7 +337,9 @@ int_var:     CVUU4(long_var)               "#		"
 int_var:     CVUU4(short_var)              "#		"
 int_var:     DIVI4(int_var, int_var)       "#		"
 int_var:     DIVU4(int_var, int_var)       "#		"
+int_var:     INDIRI4(arg)                  "%0"
 int_var:     INDIRI4(ptr)                  "#		"
+int_var:     INDIRU4(arg)                  "%0"
 int_var:     INDIRU4(ptr)                  "#		"
 int_var:     LSHI4(int_var, int_var)       "#		"
 int_var:     LSHU4(int_var, int_var)       "#		"
@@ -356,8 +362,8 @@ long_var:    BCOMU8(long_var)              "#		"
 long_var:    BORI8(long_var)               "#		"
 long_var:    BORU8(long_var)               "#		"
 long_var:    BXORI8(long_var)              "#		"
-long_var:    CALLI8(ptr)                   "\t\t// Call (long) unimplemented\n"
-long_var:    CALLU8(ptr)                   "\t\t// Call (ulong) unimplemented\n"
+long_var:    CALLI8(ptr)                   "\t\t// Call (long) unimplemented"
+long_var:    CALLU8(ptr)                   "\t\t// Call (ulong) unimplemented"
 long_var:    CNSTI8                        "@long_%a"
 long_var:    CNSTU8                        "@ulong_%a"
 long_var:    CVFI8(double_var)             "#		"
@@ -369,7 +375,7 @@ long_var:    CVIU8(char_var)               "#		"
 long_var:    CVIU8(int_var)                "#		"
 long_var:    CVIU8(long_var)               "#		"
 long_var:    CVIU8(short_var)              "#		"
-long_var:    CVPU8(ptr)                    "\t\t// Pointer to integer conversion not supported\n"
+long_var:    CVPU8(ptr)                    "\t\t// Pointer to integer conversion not implemented"
 long_var:    CVUI8(char_var)               "#		"
 long_var:    CVUI8(int_var)                "#		"
 long_var:    CVUI8(int_var)                "#		"
@@ -379,7 +385,9 @@ long_var:    CVUU8(int_var)                "#		"
 long_var:    CVUU8(short_var)              "#		"
 long_var:    DIVI8(long_var, long_var)     "#		"
 long_var:    DIVU8(long_var, long_var)     "#		"
+long_var:    INDIRI8(arg)                  "%0"
 long_var:    INDIRI8(ptr)                  "#		"
+long_var:    INDIRU8(arg)                  "%0"
 long_var:    INDIRU8(ptr)                  "#		"
 long_var:    LSHI8(long_var, long_var)     "#		"
 long_var:    LSHU8(long_var, long_var)     "#		"
@@ -393,43 +401,48 @@ long_var:    RSHU8(long_var, long_var)     "#		"
 long_var:    SUBI8(long_var, long_var)     "#		"
 long_var:    SUBU8(long_var, long_var)     "#		"
 
-float_var:   ADDF4(float_var, float_var)   "#		"
-float_var:   CALLF4(ptr)                   "\t\t// Call (float) unimplemented\n"
 float_var:   CNSTF4                        "\t\t// Float constant %a"
-float_var:   CVFF4(double_var)             "#		"
+float_var:   NEGF4(float_var)              "\t\t// Negate float value %0"
+float_var:   ADDF4(float_var, float_var)   "#		"
+float_var:   SUBF4(float_var, float_var)   "#		"
+float_var:   MULF4(float_var, float_var)   "#		"
+float_var:   DIVF4(float_var, float_var)   "#		"
 float_var:   CVIF4(char_var)               "#		"
+float_var:   CVIF4(short_var)              "#		"
 float_var:   CVIF4(int_var)                "#		"
 float_var:   CVIF4(long_var)               "#		"
-float_var:   CVIF4(short_var)              "#		"
-float_var:   DIVF4(float_var, float_var)   "#		"
+float_var:   CVFF4(double_var)             "#		"
+float_var:   CALLF4(ptr)                   "\t\t// Call (float) unimplemented"
+float_var:   INDIRF4(arg)                  "%0"
 float_var:   INDIRF4(ptr)                  "#		"
-float_var:   MULF4(float_var, float_var)   "#		"
-float_var:   NEGF4(float_var)              "\t\t// Negate float value %0"
-float_var:   SUBF4(float_var, float_var)   "#		"
 
-double_var:  ADDF8(double_var, double_var) "#		"
-double_var:  CALLF8(ptr)                   "\t\t// Call (double) unimplemented\n"
 double_var:  CNSTF8                        "\t\t// Double constant %a"
-double_var:  CVFF8(float_var)              "#		"
+double_var:  NEGF4(double_var)             "\t\t// Negate double value %0"
+double_var:  ADDF8(double_var, double_var) "#		"
+double_var:  SUBF8(double_var, double_var) "#		"
+double_var:  MULF8(double_var, double_var) "#		"
+double_var:  DIVF8(double_var, double_var) "#		"
 double_var:  CVIF8(char_var)               "#		"
+double_var:  CVIF8(short_var)              "#		"
 double_var:  CVIF8(int_var)                "#		"
 double_var:  CVIF8(long_var)               "#		"
-double_var:  CVIF8(short_var)              "#		"
-double_var:  DIVF8(double_var, double_var) "#		"
+double_var:  CVFF8(float_var)              "#		"
+double_var:  CALLF8(ptr)                   "\t\t// Call (double) unimplemented"
+double_var:  INDIRF8(arg)                  "%0"
 double_var:  INDIRF8(ptr)                  "#		"
-double_var:  MULF8(double_var, double_var) "#		"
-double_var:  NEGF4(double_var)             "\t\t// Negate double value %0"
-double_var:  SUBF8(double_var, double_var) "#		"
 
-ptr:         ADDRFP8                       "%%%a"
+arg:         ADDRFP8                       "%%%a" 1
+
+ptr:         ADDRFP8                       "%%%a" 2
 ptr:         ADDRGP8                       "@%a"
 ptr:         ADDRLP8                       "%%%a"
-ptr:         CALLP8(ptr)                   "\t\t// Call (pointer) unimplemented\n"
-ptr:         CNSTP8                        "\t\t// constant pointer unimplemented\n"
-ptr:         CVUP8(char_var)               "\t\t// Integer to pointer conversion not supported\n"
-ptr:         CVUP8(int_var)                "\t\t// Integer to pointer conversion not supported\n"
-ptr:         CVUP8(long_var)               "\t\t// Integer to pointer conversion not supported\n"
-ptr:         CVUP8(short_var)              "\t\t// Integer to pointer conversion not supported\n"
+ptr:         CALLP8(ptr)                   "\t\t// Call (pointer) unimplemented"
+ptr:         CNSTP8                        "\t\t// constant pointer unimplemented"
+ptr:         CVUP8(char_var)               "\t\t// Integer to pointer conversion not implemented"
+ptr:         CVUP8(int_var)                "\t\t// Integer to pointer conversion not implemented"
+ptr:         CVUP8(long_var)               "\t\t// Integer to pointer conversion not implemented"
+ptr:         CVUP8(short_var)              "\t\t// Integer to pointer conversion not implemented"
+ptr:         INDIRP8(arg)                  "%0"
 ptr:         INDIRP8(ptr)                  "#		"
 ptr:         ADDP8(ptr, long_var)          "#		"
 ptr:         SUBP8(ptr, long_var)          "#		"
@@ -526,13 +539,6 @@ static void progbeg(int argc, char *argv[])
 
 	print("\n");
 
-	//const_name(longtype, "0");
-	//const_name(longtype, "1");
-	//const_name(floattype, "0.0f");
-	//const_name(floattype, "1.0f");
-	//const_name(doubletype, "0.0d");
-	//const_name(doubletype, "1.0d");
-
 	const_name(voidptype, "NULL");
 
 	print("\n");
@@ -549,9 +555,7 @@ static void progbeg(int argc, char *argv[])
 	tmask[0] = tmask[1] = ~(unsigned)0;
 	vmask[0] = vmask[1] = 0;
 }
-static void progend(void)
-{
-}
+static void progend(void) {}
 
 static void address(Symbol q, Symbol p, long n)
 {
@@ -615,25 +619,25 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 		Symbol p = callee[i];
 		Symbol q = caller[i];
 		p->x.offset = q->x.offset = offset;
-		p->x.name = q->x.name = stringf("%d", p->x.offset);
+		p->x.name = q->x.name = p->name;
 		p->sclass = q->sclass = AUTO;
 		offset += roundup(q->type->size, 4);
 	}
 	offset = maxoffset = 0;
 	gencode(caller, callee);
 	emitcode();
-	//TODO: add a flag so I know if I need to add a RET ()
 	//TODO: unpin all pinned objects
 	print("}\n\n");
 }
 
 static void import(Symbol p)
 {
+	//TODO: implement import?
 	print("//%s called\n", __FUNCTION__);
 }
 static void export(Symbol p)
 {
-	//TODO: implement this?
+	//TODO: implement export?
 	print("//%s called\n", __FUNCTION__);
 }
 static void global(Symbol p)
@@ -644,13 +648,8 @@ static void global(Symbol p)
 }
 static void local(Symbol p)
 {
-	//TODO: print/store var decl here
 	p->sclass = AUTO;
-	offset = roundup(offset + p->type->size, p->type->align < 4 ? 4 : p->type->align);
-	p->x.offset = -offset;
 	p->x.name = p->name;
-
-	//print("//%%%s <%s>\n", p->name, type_name(p->type));
 }
 
 static void segment(int n)
@@ -663,7 +662,35 @@ static void space(int n)
 	print("//%s called\n", __FUNCTION__);
 }
 
+/*
+ * generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch)
+ */
+static void mugen_cond(Node p) {
+	if (p == NULL)
+		return;
+	int op = generic(p->op);
+	if (op == GT || op == GE || op == EQ || op == NE || op == LE || op == LT) {
+		p->syms[1] = newtemp(AUTO, optype(p->op), opsize(p->op));
+		p->syms[1]->x.name = stringf("cond_%s", p->syms[1]->name);
+		p->syms[2] = findlabel(genlabel(1));
+		p->kids[2] = newnode(LABEL + V, NULL, NULL, p->syms[2]);
+	}
+	mugen_cond(p->kids[0]);
+	mugen_cond(p->kids[1]);
+}
+
+/*
+ TODO: (list)
+	0. add sym to store condition results
+	1. remove branches after returns
+	2. remove labels at end of functions or add default return val
+	3. add RETV to all funcs that don't explicitly return (possibly sixed by 2)
+ */
 static Node mugen(Node forest) {
+	for (Node p = forest; p; p = p->link) {
+		mugen_cond(p);
+	}
+
 	return gen(forest);
 }
 
@@ -721,25 +748,21 @@ static void emit2(Node p)
 		break;
 	}
 }
-static void doarg(Node p)
-{
-	print("//%s called\n", __FUNCTION__);
-	mkactual(4, p->syms[0]->u.c.v.i);
-}
+static void doarg(Node p) {}
 static void target(Node p) {}
 static void clobber(Node p) {}
 
+//helper funcs
 static int def_type(Type t, char *name, char *mu_t) {
-	Types ts, n;
-	Type ts_tmp, t_tmp;
+	Types ts = NULL, n = NULL;
 	if (isptr(t)) {
 		for (ts = types_head; ts; ts = ts->next) {
+			Type ts_tmp, t_tmp;
 			n = ts;
 			if (!isptr(ts->type)) continue;
 			ts_tmp = ts->type;
 			t_tmp = t;
-			while (isptr(ts_tmp) && isptr(t_tmp))
-			{
+			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
 				t_tmp = t_tmp->type;
 			}
@@ -774,17 +797,17 @@ static char *type_name(Type t) {
 			if (!isptr(ts->type)) continue;
 			ts_tmp = ts->type;
 			t_tmp = t;
-			while (isptr(ts_tmp) && isptr(t_tmp))
-			{
+			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
 				t_tmp = t_tmp->type;
 			}
 			if (ts_tmp->u.sym == t_tmp->u.sym)
 				return ts->name;
 		}
-		char *name = stringf("%s_%s", "ptr", type_name(t->type));
+		char *name = stringf("ptr_%s", type_name(t->type));
 		def_type(t, name, stringf("uptr<@%s>", type_name(t->type)));
 		return name;
+		assert(0);
 	} else if (isarray(t)) {
 		for (ts = types_head; ts; ts = ts->next)
 			if (ts->type->u.sym == t->u.sym)
@@ -792,12 +815,13 @@ static char *type_name(Type t) {
 		char *name = stringf("arr_%s_%d", type_name(t->type), t->size);
 		def_type(t, name, stringf("array< @%s %d >", type_name(t->type), t->size));
 		return name;
+		assert(0);
 	} else {
 		for (ts = types_head; ts; ts = ts->next)
 			if (ts->type->u.sym == t->u.sym)
 				return ts->name;
+		assert(0);
 	}
-	assert(0);
 	return NULL;
 }
 

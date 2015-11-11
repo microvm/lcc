@@ -217,6 +217,7 @@ static char *type_name(Type t)
 	if (isstruct(t) || isunion(t)) return t->u.sym->name;
 
 	error("Uncovered type!");
+	return "";
 }
 
 struct worklist_node {

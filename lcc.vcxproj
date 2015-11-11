@@ -63,12 +63,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
-    <NMakeCleanCommandLine>nmake -f makefile.nt clean</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR="$(Configuration)\\";$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>nmake -f makefile.nt clobber all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;LCCDIR="$(Configuration)\\";_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
@@ -77,10 +77,12 @@
     <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR=$(Configuration);$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
-    <NMakeOutput>Debug/rcc.exe</NMakeOutput>
-    <NMakeCleanCommandLine>nmake -f makefile.nt clobber</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" FLAGS="/Ox"  /F makefile.nt all</NMakeBuildCommandLine>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;LCCDIR="$(Configuration)\\";NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" FLAGS="/Ox"  /F makefile.nt clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
@@ -247,9 +249,6 @@
     <None Include="makefile.nt" />
     <None Include="src\mu.md" />
     <None Include="timm.mir" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="mu_d.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

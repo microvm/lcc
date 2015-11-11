@@ -474,7 +474,4 @@
     <None Include="src\mu.md" />
     <None Include="timm.mir" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="mu_d.txt" />
-  </ItemGroup>
 </Project>
