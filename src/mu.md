@@ -6,6 +6,7 @@
 #define RIGHT_CHILD(p) ((p)->kids[1])
 #define STATE_LABEL(p) ((p)->x.state)
 
+//%TOP_START
 static void address(Symbol, Symbol, long);
 static void blkfetch(int, int, int, int);
 static void blkloop(int, int, int, int, int, int[]);
@@ -18,11 +19,11 @@ static void doarg(Node);
 static void emit2(Node);
 static void export(Symbol);
 static void clobber(Node);
-static void function(Symbol, Symbol [], Symbol [], int);
+static void function(Symbol, Symbol[], Symbol[], int);
 static void global(Symbol);
 static void import(Symbol);
 static void local(Symbol);
-static void progbeg(int, char **);
+static void progbeg(int, char *[]);
 static void progend(void);
 static void segment(int);
 static void space(int);
@@ -50,8 +51,6 @@ typedef struct consts {
 	struct consts *next;
 } *Consts;
 
-static char* indent;
-
 static Types types_head;
 static Consts consts_head;
 
@@ -60,7 +59,15 @@ static Symbol intregw, fltregw;
 
 static Symbol g;
 
-static int cseg;
+typedef struct args {
+	char *arg;
+	struct args *next;
+} *Args;
+
+static Args args_list;
+
+char *result;
+//%TOP_END
 %}
 
 %start stmt
@@ -443,7 +450,7 @@ ptr:         CVUP8(int_var)                "\t\t// Integer to pointer conversion
 ptr:         CVUP8(long_var)               "\t\t// Integer to pointer conversion not implemented"
 ptr:         CVUP8(short_var)              "\t\t// Integer to pointer conversion not implemented"
 ptr:         INDIRP8(arg)                  "%0"
-ptr:         INDIRP8(ptr)                  "#		"
+ptr:         INDIRP8(ptr)                  "%0"
 ptr:         ADDP8(ptr, long_var)          "#		"
 ptr:         SUBP8(ptr, long_var)          "#		"
 %%
@@ -505,11 +512,13 @@ Interface muIR = {
     }
 };
 
+//%BOT_START
 static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
 	types_head = NULL;
 	consts_head = NULL;
+	args_list = NULL;
 	print(".funcsig @void_func () -> ()\n\n");
 
 	def_type(voidtype, "void", "void");
@@ -609,6 +618,7 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	for (size_t i = 0; callee[i]; i++)
 		print("@%s ", type_name(caller[i]->type));
 	print(") -> ( @%s )\n", type_name(f->type->u.f.proto[0]));
+	print(".typedef @%s_ref = funcref<@%s_sig>\n", f->name, f->name);
 	print(".funcdef @%s VERSION %%v1 <@%s_sig> {\n", f->name, f->name);
 	print("\t%%entry( ");
 	for (size_t i = 0; callee[i]; i++)
@@ -652,10 +662,7 @@ static void local(Symbol p)
 	p->x.name = p->name;
 }
 
-static void segment(int n)
-{
-	print("//%s called (%d)\n", __FUNCTION__, n);
-}
+static void segment(int n) {}
 
 static void space(int n)
 {
@@ -663,7 +670,7 @@ static void space(int n)
 }
 
 /*
- * generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch)
+ * Generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch)
  */
 static void mugen_cond(Node p) {
 	if (p == NULL)
@@ -680,11 +687,10 @@ static void mugen_cond(Node p) {
 }
 
 /*
- TODO: (list)
-	0. add sym to store condition results
-	1. remove branches after returns
+ TODO: <list>
+	1. remove lables after returns
 	2. remove labels at end of functions or add default return val
-	3. add RETV to all funcs that don't explicitly return (possibly sixed by 2)
+	3. add RETV to all funcs that don't explicitly return (possibly fixed by 2)
  */
 static Node mugen(Node forest) {
 	for (Node p = forest; p; p = p->link) {
@@ -726,22 +732,61 @@ static void emit2(Node p)
 {
 	Symbol s1, s2;
 	Node k1, k2;
-	switch (specific(p->op)) {
-	//TODO: unpin stuff at func exit
-	case ASGN + P:
-		s1 = p->kids[0]->syms[0];
-		s2 = p->kids[1]->syms[0];
-		if (isarray(s2->type)) {
-			Type t = s2->type;
-			while (isarray(t))
-				t = t->type;
-			//TODO: if array is generated then copy it to new location
-			char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
-			print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
-			print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
-		} else {
-			print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
+	switch (generic(p->op)) {
+	case ADD:
+		if (optype(p->op) == P) {
+			//Ptrs are always 8 bytes
+			char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom = "ptr_void";
+			short *nts = _nts[_rule(p->x.state, p->x.inst)];
+			print("\n\t\t%s = PTRCAST <@%s @long> ", tmp1, tfrom);
+			emitasm(p->kids[0], nts[0]);
+			print("\n\t\t%s = ADD <@long> %s ", tmp2, tmp1);
+			emitasm(p->kids[1], nts[1]);
+			print("\n\t\t%%%s = PTRCAST <@long @%s> %s", p->syms[2]->x.name, tfrom, tmp2);
+			printf("\n");
 		}
+		break;
+	case ASGN: //TODO: unpin stuff at func exit
+		if (optype(p->op) == P) {
+			s1 = p->kids[0]->syms[0];
+			s2 = p->kids[1]->syms[0];
+			if (isarray(s2->type)) {
+				Type t = s2->type;
+				while (isarray(t))
+					t = t->type;
+				//TODO: if array is generated (ie was not declared global) then copy it to new location
+				char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
+				print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
+				print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
+			} else {
+				print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
+			}
+		}
+		break;
+	case ARG:
+		Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
+		char *var = stringf("%%%d_arg", genlabel(1));
+		arg->arg = var;
+		arg->next = NULL;
+		short *nts = _nts[_rule(p->x.state, p->x.inst)];
+		//TODO: probably have to do some manual processing to get the name of the result var
+		emitasm(p->kids[0], nts[0]);
+
+		while (a != NULL && a->next != NULL)
+			a = a->next;
+		if (a)
+			a->next = arg;
+		else
+			args_list = arg;
+		break;
+	case CALL:
+		printf("\t\tCALL <@%s_sig> @%s_ref (", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
+		while (args_list != NULL) {
+			print("%s", args_list->arg);
+			if (args_list = args_list->next)
+				print(", ");
+		}
+		print(")\n");
 		break;
 	default:
 		print("//OP %d NOT RECOGNIZED\n", p->op);

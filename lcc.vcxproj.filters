@@ -249,6 +249,9 @@
     <ClCompile Include="Debug\mu.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\c_to_md.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cpp\cpp.h">
@@ -471,7 +474,7 @@
   <ItemGroup>
     <None Include="doc\install.html" />
     <None Include="makefile.nt" />
-    <None Include="src\mu.md" />
     <None Include="timm.mir" />
+    <None Include="src\mu.md" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,3 @@
-//Copied from the top of mu.md
 #include "c.h"
 #define NODEPTR_TYPE Node
 #define OP_LABEL(p) ((p)->op)
@@ -6,6 +5,7 @@
 #define RIGHT_CHILD(p) ((p)->kids[1])
 #define STATE_LABEL(p) ((p)->x.state)
 
+//%TOP_START
 static void address(Symbol, Symbol, long);
 static void blkfetch(int, int, int, int);
 static void blkloop(int, int, int, int, int, int[]);
@@ -28,6 +28,7 @@ static void segment(int);
 static void space(int);
 static void target(Node);
 static Node mugen(Node);
+static Symbol rmap(int);
 
 //helper funcs
 //define a new mu type
@@ -57,12 +58,25 @@ static Symbol intregw, fltregw;
 
 static Symbol g;
 
-//The following is copied from the last section of mu.md so that I can use autocomplete, etc when editing it
+typedef struct args {
+	char *arg;
+	struct args *next;
+} *Args;
+
+static Args args_list;
+
+char *result;
+//%TOP_END
+
+static short *_nts[];
+
+//%BOT_START
 static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
 	types_head = NULL;
 	consts_head = NULL;
+	args_list = NULL;
 	print(".funcsig @void_func () -> ()\n\n");
 
 	def_type(voidtype, "void", "void");
@@ -162,6 +176,7 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	for (size_t i = 0; callee[i]; i++)
 		print("@%s ", type_name(caller[i]->type));
 	print(") -> ( @%s )\n", type_name(f->type->u.f.proto[0]));
+	print(".typedef @%s_ref = funcref<@%s_sig>\n", f->name, f->name);
 	print(".funcdef @%s VERSION %%v1 <@%s_sig> {\n", f->name, f->name);
 	print("\t%%entry( ");
 	for (size_t i = 0; callee[i]; i++)
@@ -275,37 +290,70 @@ static void emit2(Node p)
 {
 	Symbol s1, s2;
 	Node k1, k2;
-	switch (specific(p->op)) {
-	//TODO: unpin stuff at func exit
-	case ASGN + P:
-		s1 = p->kids[0]->syms[0];
-		s2 = p->kids[1]->syms[0];
-		if (isarray(s2->type)) {
-			Type t = s2->type;
-			while (isarray(t))
-				t = t->type;
-			//TODO: if array is generated (not declared global) then copy it to new location
-			char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
-			print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
-			print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
-		} else {
-			print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
+	switch (generic(p->op)) {
+	case ADD:
+		if (optype(p->op) == P) {
+			//Ptrs are always 8 bytes
+			char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom = "ptr_void";
+			short *nts = _nts[_rule(p->x.state, p->x.inst)];
+			print("\n\t\t%s = PTRCAST <@%s @long> ", tmp1, tfrom);
+			emitasm(p->kids[0], nts[0]);
+			print("\n\t\t%s = ADD <@long> %s ", tmp2, tmp1);
+			emitasm(p->kids[1], nts[1]);
+			print("\n\t\t%%%s = PTRCAST <@long @%s> %s", p->syms[2]->x.name, tfrom, tmp2);
+			printf("\n");
 		}
+		break;
+	case ASGN: //TODO: unpin stuff at func exit
+		if (optype(p->op) == P) {
+			s1 = p->kids[0]->syms[0];
+			s2 = p->kids[1]->syms[0];
+			if (isarray(s2->type)) {
+				Type t = s2->type;
+				while (isarray(t))
+					t = t->type;
+				//TODO: if array is generated (ie was not declared global) then copy it to new location
+				char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
+				print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
+				print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
+			} else {
+				print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
+			}
+		}
+		break;
+	case ARG:
+		Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
+		char *var = stringf("%%%d_arg", genlabel(1));
+		arg->arg = var;
+		arg->next = NULL;
+		short *nts = _nts[_rule(p->x.state, p->x.inst)];
+		//TODO: probably have to do some manual processing to get the name of the result var
+		emitasm(p->kids[0], nts[0]);
+
+		while (a != NULL && a->next != NULL)
+			a = a->next;
+		if (a)
+			a->next = arg;
+		else
+			args_list = arg;
+		break;
+	case CALL:
+		printf("\t\tCALL <@%s_sig> @%s_ref (", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
+		while (args_list != NULL) {
+			print("%s", args_list->arg);
+			if (args_list = args_list->next)
+				print(", ");
+		}
+		print(")\n");
 		break;
 	default:
 		print("//OP %d NOT RECOGNIZED\n", p->op);
 		break;
 	}
 }
-static void doarg(Node p) {
-	print("//%s called\n", __FUNCTION__);
-}
-static void target(Node p) {
-	print("//%s called\n", __FUNCTION__);
-}
-static void clobber(Node p) {
-	print("//%s called\n", __FUNCTION__);
-}
+static void doarg(Node p) {}
+static void target(Node p) {}
+static void clobber(Node p) {}
 
 //helper funcs
 static int def_type(Type t, char *name, char *mu_t) {

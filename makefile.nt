@@ -17,7 +17,7 @@ C=$Blcc -Wo-lccdir=$(BUILDDIR) -Wf-target=$(TARGET) -Iinclude\$(TARGET)
 what:
 	-@echo nmake -f makefile.nt all rcc lburg cpp lcc bprint liblcc triple clean clobber
 
-all:: lcc rcc lburg cpp bprint liblcc ops sizes
+all:: lcc rcc lburg cpp bprint liblcc ops sizes ctomd
 
 rcc:	$Brcc$E
 lburg:	$Blburg$E
@@ -27,6 +27,7 @@ bprint:	$Bbprint$E
 liblcc:	$Bliblcc$A
 ops:	$Bops$E
 sizes:	$Bsizes$E
+ctomd:	$Bctomd$E
 
 RCCOBJS=$Balloc$O \
 	$Bbind$O \
@@ -118,16 +119,22 @@ $Balpha.c:	$Blburg$E src/alpha.md;    $Blburg src/alpha.md    $@
 $Bmips.c:	$Blburg$E src/mips.md;     $Blburg src/mips.md     $@
 $Bsparc.c:	$Blburg$E src/sparc.md;    $Blburg src/sparc.md    $@
 $Bx86.c:	$Blburg$E src/x86.md;      $Blburg src/x86.md      $@
-$Bmu.c:	$Blburg$E src/mu.md;      $Blburg src/mu.md      $@
+$Bmu.c:	$Blburg$E $Bctomd$E src/mu.md
+	$Bctomd src/_mu.c src/mu.md
+	$Blburg src/mu.md $@
 $Bx86linux.c:	$Blburg$E src/x86linux.md; $Blburg src/x86linux.md $@
 
 $Bbprint$E:	$Bbprint$O;	$(LD) $(LDFLAGS) -Fe$@ $Bbprint$O
 $Bops$E:	$Bops$O;	$(LD) $(LDFLAGS) -Fe$@ $Bops$O
 $Bsizes$E:	$Bsizes$O;	$(LD) $(LDFLAGS) -Fe$@ $Bsizes$O
 
+$Bctomd$E:	$Bctomd$O;	$(LD) $(LDFLAGS) -Fe$@ $Bctomd$O
+
 $Bbprint$O:	etc/bprint.c src/profio.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ etc/bprint.c
 $Bops$O:	etc/ops.c src/ops.h;		$(CC) $(CFLAGS) -c -Isrc -Fo$@ etc/ops.c
 $Bsizes$O:	src/sizes.c;		$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/sizes.c
+
+$Bctomd$O:	src/c_to_md.cpp;		$(CC) /Zi /EHsc /Fd$(BUILDDIR)\ $(FLAGS) -c -Isrc -Fo$@ src/c_to_md.cpp
 
 $Blcc$E:	$Blcc$O $Bhost$O;	$(LD) $(LDFLAGS) -Fe$@ $Blcc$O $Bhost$O
 
@@ -340,7 +347,7 @@ clean::		testclean
 		-del /q $B*.ilk
 
 clobber::	clean
-		-del /q $Brcc$E $Blburg$E $Bcpp$E $Blcc$E $Bcp$E $Bbprint$E $Bops$E $Bsizes$E $B*$A
+		-del /q $Brcc$E $Blburg$E $Bcpp$E $Blcc$E $Bcp$E $Bbprint$E $Bops$E $Bsizes$E $Bctomd$E $B*$A
 		-del /q $B*.pdb $B*.pch
 
 RCCSRCS=src/alloc.c \
