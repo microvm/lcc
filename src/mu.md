@@ -438,9 +438,8 @@ double_var:  CALLF8(ptr)                   "\t\t// Call (double) unimplemented"
 double_var:  INDIRF8(arg)                  "%0"
 double_var:  INDIRF8(ptr)                  "#		"
 
-arg:         ADDRFP8                       "%%%a" 1
+arg:         ADDRFP8                       "%%%a"
 
-ptr:         ADDRFP8                       "%%%a" 2
 ptr:         ADDRGP8                       "@%a"
 ptr:         ADDRLP8                       "%%%a"
 ptr:         CALLP8(ptr)                   "\t\t// Call (pointer) unimplemented"
@@ -451,7 +450,7 @@ ptr:         CVUP8(long_var)               "\t\t// Integer to pointer conversion
 ptr:         CVUP8(short_var)              "\t\t// Integer to pointer conversion not implemented"
 ptr:         INDIRP8(arg)                  "%0"
 ptr:         INDIRP8(ptr)                  "%0"
-ptr:         ADDP8(ptr, long_var)          "#		"
+ptr:         ADDP8(ptr, long_var)          "#\n"
 ptr:         SUBP8(ptr, long_var)          "#		"
 %%
 Interface muIR = {
