@@ -82,7 +82,6 @@ static void progbeg(int argc, char *argv[])
 
 	def_type(voidtype, "void", "void");
 
-	//def_type(, "i1  ", "int<1>");
 	def_type(chartype, "char", "int<8>");
 	def_type(unsignedchar, "uchar", "int<8>");
 
@@ -245,7 +244,6 @@ static void mugen_cond(Node p) {
 	mugen_cond(p->kids[0]);
 	mugen_cond(p->kids[1]);
 }
-
 
 /*
 	Generates a variable name for each instruction's result
