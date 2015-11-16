@@ -119,7 +119,7 @@ $Balpha.c:	$Blburg$E src/alpha.md;    $Blburg src/alpha.md    $@
 $Bmips.c:	$Blburg$E src/mips.md;     $Blburg src/mips.md     $@
 $Bsparc.c:	$Blburg$E src/sparc.md;    $Blburg src/sparc.md    $@
 $Bx86.c:	$Blburg$E src/x86.md;      $Blburg src/x86.md      $@
-$Bmu.c:	$Blburg$E $Bctomd$E src/mu.md
+$Bmu.c:	$Blburg$E $Bctomd$E src/mu.md src/_mu.c
 	$Bctomd src/_mu.c src/mu.md
 	$Blburg src/mu.md $@
 $Bx86linux.c:	$Blburg$E src/x86linux.md; $Blburg src/x86linux.md $@
@@ -396,3 +396,8 @@ $B1rcc$E:	$Brcc$E $Blcc$E $Bcpp$E
 		$C -o $@ -B$B $(RCCSRCS)
 $B2rcc$E:	$B1rcc$E
 		$C -o $@ -B$B1 $(RCCSRCS)
+
+mutest:
+	$Brcc -target=mu -d -g9,// 8q.i   8q.mir
+	$Brcc -target=mu -d -g9,// incr.i incr.mir
+	$Brcc -target=mu -d -g9,// timm.i timm.mir

@@ -69,6 +69,7 @@ char *result;
 //%TOP_END
 
 static short *_nts[];
+static char  *_isinstruction[];
 
 //%BOT_START
 static void progbeg(int argc, char *argv[])
@@ -175,23 +176,19 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	print(".funcsig @%s_sig = ( ", f->name);
 	for (size_t i = 0; callee[i]; i++)
 		print("@%s ", type_name(caller[i]->type));
-	print(") -> ( @%s )\n", type_name(f->type->u.f.proto[0]));
+	print(") -> ( @%s )\n", type_name(f->type->type));
 	print(".typedef @%s_ref = funcref<@%s_sig>\n", f->name, f->name);
 	print(".funcdef @%s VERSION %%v1 <@%s_sig> {\n", f->name, f->name);
 	print("\t%%entry( ");
 	for (size_t i = 0; callee[i]; i++)
 		print("<@%s> %%%s ", type_name(caller[i]->type), caller[i]->name);
 	print("):\n");
-	offset = 16 + 4;
 	for (size_t i = 0; callee[i]; i++) {
 		Symbol p = callee[i];
 		Symbol q = caller[i];
-		p->x.offset = q->x.offset = offset;
 		p->x.name = q->x.name = p->name;
 		p->sclass = q->sclass = AUTO;
-		offset += roundup(q->type->size, 4);
 	}
-	offset = maxoffset = 0;
 	gencode(caller, callee);
 	emitcode();
 	//TODO: unpin all pinned objects
@@ -238,10 +235,26 @@ static void mugen_cond(Node p) {
 		p->syms[1] = newtemp(AUTO, optype(p->op), opsize(p->op));
 		p->syms[1]->x.name = stringf("cond_%s", p->syms[1]->name);
 		p->syms[2] = findlabel(genlabel(1));
-		p->kids[2] = newnode(LABEL + V, NULL, NULL, p->syms[2]);
+		p->link = newnode(LABEL + V, NULL, NULL, p->syms[2]);
 	}
 	mugen_cond(p->kids[0]);
 	mugen_cond(p->kids[1]);
+}
+
+
+/*
+	Generates a variable name for each instruction's result
+ */
+static void mugen_var(Node p, int child) {
+	if (p == NULL)
+		return;
+	if (p->x.inst && child) {
+		assert(p->syms[2]);
+		p->syms[2] = newtemp(AUTO, optype(p->op), opsize(p->op));
+		p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
+	}
+	mugen_var(p->kids[0], child + 1);
+	mugen_var(p->kids[1], child + 1);
 }
 
 /*
@@ -255,7 +268,12 @@ static Node mugen(Node forest) {
 		mugen_cond(p);
 	}
 
-	return gen(forest);
+	gen(forest);
+
+	for (Node p = forest; p; p = p->link)
+		mugen_var(p, 0);
+
+	return forest;
 }
 
 //XInterface funcs
@@ -288,68 +306,132 @@ static void blkloop(int dreg, int doff, int sreg, int soff, int size, int tmps[]
 
 static void emit2(Node p)
 {
-	Symbol s1, s2;
-	Node k1, k2;
-	switch (generic(p->op)) {
-	case ADD:
-		if (optype(p->op) == P) {
-			//Ptrs are always 8 bytes
-			char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom = "ptr_void";
-			short *nts = _nts[_rule(p->x.state, p->x.inst)];
+	Symbol s0, s1;
+	Node k0, k1;
+	short *nts;
+	if (optype(p->op) == P) {
+		switch (generic(p->op)) {
+		case ADD:
+			//Ptrs are always 8 bytes so we cast to a long
+			char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom;
+			k0 = p->kids[0];
+			while (k0->kids[0]) k0 = k0->kids[0];
+			tfrom = type_name(k0->syms[0]->type);
+			nts = _nts[_rule(p->x.state, p->x.inst)];
+			p->syms[2] = newtemp(AUTO, P, 8);
+			p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
 			print("\n\t\t%s = PTRCAST <@%s @long> ", tmp1, tfrom);
 			emitasm(p->kids[0], nts[0]);
 			print("\n\t\t%s = ADD <@long> %s ", tmp2, tmp1);
 			emitasm(p->kids[1], nts[1]);
-			print("\n\t\t%%%s = PTRCAST <@long @%s> %s", p->syms[2]->x.name, tfrom, tmp2);
-			printf("\n");
-		}
-		break;
-	case ASGN: //TODO: unpin stuff at func exit
-		if (optype(p->op) == P) {
-			s1 = p->kids[0]->syms[0];
-			s2 = p->kids[1]->syms[0];
-			if (isarray(s2->type)) {
-				Type t = s2->type;
-				while (isarray(t))
-					t = t->type;
-				//TODO: if array is generated (ie was not declared global) then copy it to new location
-				char *tmp = stringf("%%%d_%s", genlabel(1), s1->x.name);
-				print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s2->x.name);
-				print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s1->x.name, type_name(t), type_name(s1->type), tmp);
-			} else {
-				print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s1->x.name, type_name(s2->type), type_name(s1->type), s2->x.name);
+			print("\n\t\t%%%s = PTRCAST <@long @%s> %s\n", p->syms[2]->x.name, tfrom, tmp2);
+			break;
+		case ARG:
+			Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
+			arg->next = NULL;
+			k0 = p->kids[0];
+			while (!k0->x.inst && k0) k0 = k0->kids[0];
+			if (!k0->x.emitted) {
+				nts = _nts[_rule(k0->x.state, k0->x.inst)];
+				if (k0->kids[0])
+					emitasm(k0->kids[0], nts[0]);
+				if (k0->kids[1])
+					emitasm(k0->kids[1], nts[1]);
 			}
-		}
-		break;
-	case ARG:
-		Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
-		char *var = stringf("%%%d_arg", genlabel(1));
-		arg->arg = var;
-		arg->next = NULL;
-		short *nts = _nts[_rule(p->x.state, p->x.inst)];
-		//TODO: probably have to do some manual processing to get the name of the result var
-		emitasm(p->kids[0], nts[0]);
+			arg->arg = k0->syms[2]->x.name;
 
-		while (a != NULL && a->next != NULL)
-			a = a->next;
-		if (a)
-			a->next = arg;
-		else
-			args_list = arg;
-		break;
-	case CALL:
-		printf("\t\tCALL <@%s_sig> @%s_ref (", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
-		while (args_list != NULL) {
-			print("%s", args_list->arg);
-			if (args_list = args_list->next)
-				print(", ");
+			while (a != NULL && a->next != NULL)
+				a = a->next;
+			if (a)
+				a->next = arg;
+			else
+				args_list = arg;
+			break;
+		case ASGN: //TODO: unpin stuff at func exit
+			s0 = p->kids[0]->syms[0];
+			s1 = p->kids[1]->syms[0];
+			if (s1) {
+				if (isarray(s1->type)) {
+					Type t = s1->type;
+					while (isarray(t))
+						t = t->type;
+					//TODO: if array is generated (ie was not declared global) then copy it to new location
+					char *tmp = stringf("%%%d_%s", genlabel(1), s0->x.name);
+					print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s1->x.name);
+					print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s0->x.name, type_name(t), type_name(s0->type), tmp);
+				} else {
+					print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s0->x.name, type_name(s1->type), type_name(s0->type), s1->x.name);
+				}
+			} else {
+				nts = _nts[_rule(p->x.state, p->x.inst)];
+				if(!(p->kids[1]->x.emitted))
+					emitasm(p->kids[1], nts[1]);
+				print("\t\t%%%s = %%", s0->name);
+				emitasm(p->kids[1], nts[1]);
+				print("\n");
+			}
+			break;
+		case INDIR:
+			short indir = 0;
+			k0 = p->kids[0];
+			print("\t\t%%%s = LOAD PTR <@", p->syms[2]->name);
+			while (k0->kids[0]) {
+				if (generic(k0->op) == INDIR)
+					indir++;
+				else if (generic(k0->op) == ADDRF || generic(k0->op) == ADDRL || generic(k0->op) == ADDRG)
+					indir--;
+				k0 = k0->kids[0];
+			}
+			char *t = type_name(k0->syms[0]->type);
+			if (indir < 0)
+				for (size_t i = indir; i <= 0; i++)
+					print("ptr_");
+			else
+				for (size_t i = 0; i <= indir; i++)
+					t = t + 4;
+			print("%s> %%", t);
+			nts = _nts[_rule(p->x.state, p->x.inst)];
+			emitasm(p->kids[0], nts[0]);
+			print("\n");
+			break;
+		default:
+			print("//PTR OP %d NOT RECOGNIZED\n", p->op);
+			break;
 		}
-		print(")\n");
-		break;
-	default:
-		print("//OP %d NOT RECOGNIZED\n", p->op);
-		break;
+	} else {
+		switch (generic(p->op)) {
+		case ARG:
+			Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
+			arg->next = NULL;
+			k0 = p->kids[0];
+			while (!k0->x.inst && k0) k0 = k0->kids[0];
+			emitasm(k0, k0->x.inst);
+			k0->x.emitted = 1;
+			arg->arg = k0->syms[2]->x.name;
+
+			while (a != NULL && a->next != NULL)
+				a = a->next;
+			if (a)
+				a->next = arg;
+			else
+				args_list = arg;
+			break;
+		case CALL:
+			printf("\t\tCALL <@%s_sig> @%s_ref ( ", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
+			while (args_list != NULL) {
+				print("%%%s ", args_list->arg);
+				args_list = args_list->next;
+			}
+			print(")\n");
+			break;
+		default:
+			print("//OP %d NOT RECOGNIZED\n", p->op);
+			break;
+		}
 	}
+
+	if(p->x.registered)
+		p->x.emitted = 1;
 }
 static void doarg(Node p) {}
 static void target(Node p) {}

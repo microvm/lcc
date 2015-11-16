@@ -120,6 +120,7 @@
     <ClCompile Include="src\alloc.c" />
     <ClCompile Include="src\bind.c" />
     <ClCompile Include="src\bytecode.c" />
+    <ClCompile Include="src\c_to_md.cpp" />
     <ClCompile Include="src\dag.c" />
     <ClCompile Include="src\decl.c" />
     <ClCompile Include="src\enode.c" />
