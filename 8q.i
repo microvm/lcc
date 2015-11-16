@@ -1,13 +1,11 @@
 #line 1 "tst\8q-levi.c"
 int up[15], down[15], rows[8], x[8];
-int queens(), print();
 
-main()
+int main()
 {
 	int i;
-	int j=0;
 
-	for (i = j; i < 15; i++)
+	for (i = 0; i < 15; i++)
 		up[i] = down[i] = 1;
 	for (i = 0; i < 8; i++)
 		rows[i] = 1;
@@ -15,7 +13,7 @@ main()
 	return 0;
 }
 
-queens(c)
+int queens(int c)
 {
 	int r;
 
@@ -31,7 +29,7 @@ queens(c)
 		}
 }
 
-print()
+int print()
 {
 	int k;
 
