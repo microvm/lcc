@@ -608,6 +608,11 @@ static void defsymbol(Symbol p)
 
 static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 {
+	if (f->type->u.f.oldstyle) {
+		printf("//There are Ph.D.'s who are younger than ANSI C, dawg\n//Omitted Pre-ANSI C function %s.\n", f->name);
+		return;
+	}
+
 	usedmask[0] = usedmask[1] = 0;
 	freemask[0] = freemask[1] = ~(unsigned)0;
 	for (size_t i = 0; caller[i]; i++)
@@ -768,8 +773,7 @@ static void emit2(Node p)
 			print("\n\t\t%%%s = PTRCAST <@long @%s> %s\n", p->syms[2]->x.name, tfrom, tmp2);
 			break;
 		case ARG:
-			Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
-			arg->next = NULL;
+			Args arg = (Args)allocate(sizeof(*arg), STMT);
 			k0 = p->kids[0];
 			while (!k0->x.inst && k0) k0 = k0->kids[0];
 			if (!k0->x.emitted) {
@@ -781,12 +785,8 @@ static void emit2(Node p)
 			}
 			arg->arg = k0->syms[2]->x.name;
 
-			while (a != NULL && a->next != NULL)
-				a = a->next;
-			if (a)
-				a->next = arg;
-			else
-				args_list = arg;
+			arg->next = args_list;
+			args_list = arg;
 			break;
 		case ASGN: //TODO: unpin stuff at func exit
 			s0 = p->kids[0]->syms[0];
