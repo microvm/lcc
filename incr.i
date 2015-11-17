@@ -1,7 +1,7 @@
 #line 1 "tst\incr.c"
-void main() {}
+void main(void) {}
 
-void memchar() {
+void memchar(void) {
 	char x, *p;
 
 	&x, &p;
@@ -11,7 +11,7 @@ void memchar() {
 	x = *--p;
 }
 
-void memint() {
+void memint(void) {
 	int x, *p;
 
 	&x, &p;
@@ -21,7 +21,7 @@ void memint() {
 	x = *--p;
 }
 
-void regchar() {
+void regchar(void) {
 	register char x, *p;
 
 	x = *p++;
@@ -30,7 +30,7 @@ void regchar() {
 	x = *--p;
 }
 
-void regint() {
+void regint(void) {
 	register int x, *p;
 
 	x = *p++;

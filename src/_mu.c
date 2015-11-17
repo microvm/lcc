@@ -229,7 +229,7 @@ static void space(int n)
 }
 
 /*
- * Generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch)
+	Generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch)
  */
 static void mugen_cond(Node p) {
 	if (p == NULL)
@@ -246,12 +246,37 @@ static void mugen_cond(Node p) {
 }
 
 /*
+	ONLY CALL WITH ROOT NODES
+	Generates asgn nodes for fuctions that return values but the program has not stored that value
+	We need this because everything except CALLV is not a statement
+*/
+static void mugen_fasgn(Node p, Node *forest) {
+	if (generic(p->op) != CALL || optype(p->op) == V) return;
+	int type = optype(p->op), sz = opsize(p->op);
+	Symbol s = newtemp(AUTO, type, sz), ssz = intconst(sz);
+	s->x.name = stringf("%s_tmp", s->name);
+	Node addr = newnode(ADDRL + P + sizeop(8), NULL, NULL, s), asgn = newnode(ASGN + type + sizeop(sz), addr, p, ssz);
+	asgn->syms[1] = ssz;
+	asgn->link = p->link;
+	addr->count = 0;
+	p->count = 0;
+	if (p == *forest)
+		(*forest) = asgn;
+	else {
+		Node np;
+		for (np = *forest; np->link != p; np = np->link);
+		np->link = asgn;
+	}
+}
+
+/*
 	Generates a variable name for each instruction's result
  */
 static void mugen_var(Node p, int child) {
 	if (p == NULL)
 		return;
 	if (p->x.inst && child) {
+		//should have a register allocated to it
 		assert(p->syms[2]);
 		p->syms[2] = newtemp(AUTO, optype(p->op), opsize(p->op));
 		p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
@@ -269,6 +294,7 @@ static void mugen_var(Node p, int child) {
 static Node mugen(Node forest) {
 	for (Node p = forest; p; p = p->link) {
 		mugen_cond(p);
+		mugen_fasgn(p, &forest);
 	}
 
 	gen(forest);
@@ -332,18 +358,20 @@ static void emit2(Node p)
 		case ARG:
 			Args arg = (Args)allocate(sizeof(*arg), STMT);
 			k0 = p->kids[0];
-			while (!k0->x.inst && k0) k0 = k0->kids[0];
-			if (!k0->x.emitted) {
-				nts = _nts[_rule(k0->x.state, k0->x.inst)];
-				if (k0->kids[0])
-					emitasm(k0->kids[0], nts[0]);
-				if (k0->kids[1])
-					emitasm(k0->kids[1], nts[1]);
-			}
-			arg->arg = k0->syms[2]->x.name;
+			while (k0 && !k0->x.inst) k0 = k0->kids[0];
+			if (k0) { //TODO: fix this (might be because printf is not declared in 8q.c)
+				if (!k0->x.emitted) {
+					nts = _nts[_rule(k0->x.state, k0->x.inst)];
+					if (k0->kids[0])
+						emitasm(k0->kids[0], nts[0]);
+					if (k0->kids[1])
+						emitasm(k0->kids[1], nts[1]);
+				}
+				arg->arg = k0->syms[2]->x.name;
 
-			arg->next = args_list;
-			args_list = arg;
+				arg->next = args_list;
+				args_list = arg;
+			}
 			break;
 		case ASGN: //TODO: unpin stuff at func exit
 			s0 = p->kids[0]->syms[0];
@@ -402,17 +430,19 @@ static void emit2(Node p)
 			Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
 			arg->next = NULL;
 			k0 = p->kids[0];
-			while (!k0->x.inst && k0) k0 = k0->kids[0];
-			emitasm(k0, k0->x.inst);
-			k0->x.emitted = 1;
-			arg->arg = k0->syms[2]->x.name;
+			while (k0 && !k0->x.inst) k0 = k0->kids[0];
+			if (k0) { //TODO: fix this (might be because printf is not declared in 8q.c)
+				emitasm(k0, k0->x.inst);
+				k0->x.emitted = 1;
+				arg->arg = k0->syms[2]->x.name;
 
-			while (a != NULL && a->next != NULL)
-				a = a->next;
-			if (a)
-				a->next = arg;
-			else
-				args_list = arg;
+				while (a != NULL && a->next != NULL)
+					a = a->next;
+				if (a)
+					a->next = arg;
+				else
+					args_list = arg;
+			}
 			break;
 		case CALL:
 			printf("\t\tCALL <@%s_sig> @%s_ref ( ", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);

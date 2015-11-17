@@ -64,8 +64,8 @@ RCCOBJS=$Balloc$O \
 	$Bsparc$O \
 	$Bstab$O \
 	$Bx86$O \
-	$Bmu$O \
-	$Bx86linux$O
+	$Bx86linux$O \
+	$Bmu$O
 
 $Brcc$E::	$Bmain$O $Blibrcc$A $(EXTRAOBJS)
 		$(LD) $(LDFLAGS) -Fe$@ $Bmain$O $(EXTRAOBJS) $Blibrcc$A $(EXTRALIBS)
@@ -397,7 +397,7 @@ $B1rcc$E:	$Brcc$E $Blcc$E $Bcpp$E
 $B2rcc$E:	$B1rcc$E
 		$C -o $@ -B$B1 $(RCCSRCS)
 
-mutest:
-	$Brcc -target=mu -d -g9,// 8q.i   8q.mir
-	$Brcc -target=mu -d -g9,// incr.i incr.mir
-	$Brcc -target=mu -d -g9,// timm.i timm.mir
+mutest: all
+	$Brcc -target=mu -d -g9,// 8q.i   8q.mir   2> 8q_d.txt
+	$Brcc -target=mu -d -g9,// incr.i incr.mir 2> incr_d.txt
+	$Brcc -target=mu -d -g9,// timm.i timm.mir 2> timm_d.txt
