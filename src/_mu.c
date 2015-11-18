@@ -93,12 +93,12 @@ static void progbeg(int argc, char *argv[])
 
 	def_type(longtype, "long", "int<64>");
 	def_type(unsignedlong, "ulong", "int<64>");
-	def_type(longlong, "long", "int<64>");
-	def_type(unsignedlonglong, "ulong", "int<64>");
+	def_type(longlong, "longlong", "int<64>");
+	def_type(unsignedlonglong, "ulonglong", "int<64>");
 
 	def_type(floattype, "float", "float");
 	def_type(doubletype, "double", "double");
-	def_type(longdouble, "double", "double");
+	def_type(longdouble, "longdouble", "double");
 
 	def_type(voidptype, "ptr_void", "uptr<@void>");
 	def_type(charptype, "ptr_char", "uptr<@char>");
@@ -107,6 +107,13 @@ static void progbeg(int argc, char *argv[])
 	print("\n");
 
 	const_name(voidptype, "NULL");
+	//0b10000000000000000000000000000000, needed for negation
+	const_name(inttype, "2147483648");
+	const_name(longtype, "9223372036854775808");
+
+	//INT(32)_MAX and LONG(64)_MAX respectively, needed for binary complement
+	const_name(inttype, "4294967295");
+	const_name(longtype, "18446744073709551615");
 
 	print("\n");
 
@@ -390,9 +397,9 @@ static void emit2(Node p)
 				}
 			} else {
 				nts = _nts[_rule(p->x.state, p->x.inst)];
-				if(!(p->kids[1]->x.emitted))
+				if(!(p->kids[1]->x.emitted) && p->kids[0]->x.inst)
 					emitasm(p->kids[1], nts[1]);
-				print("\t\t%%%s = %%", s0->name);
+				print("\t\t%%%s = ", s0->name);
 				emitasm(p->kids[1], nts[1]);
 				print("\n");
 			}
