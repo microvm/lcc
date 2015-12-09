@@ -6,8 +6,8 @@ bld
 Debug
 Release
 .vs
-lcc.sdf
-lcc.opensdf
+*.sdf
+*.opensdf
 *.mir
 *_d.txt
 tmp

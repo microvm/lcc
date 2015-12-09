@@ -6,7 +6,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerCommand>$(Configuration)\rcc.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>-target=mu -d -g9,// timm.i timm.mir 2&gt; mu_d.txt</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-target=mu -d -g9,// incr.i incr.mir 2&gt; incr_d.txt</LocalDebuggerCommandArguments>
     <LocalDebuggerEnvironment>
     </LocalDebuggerEnvironment>
   </PropertyGroup>

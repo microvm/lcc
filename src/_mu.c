@@ -107,7 +107,7 @@ static void progbeg(int argc, char *argv[])
 	print("\n");
 
 	const_name(voidptype, "NULL");
-	//0b10000000000000000000000000000000, needed for negation
+	//0b10000000000000000000000000000000, useful for negation
 	const_name(inttype, "2147483648");
 	const_name(longtype, "9223372036854775808");
 
