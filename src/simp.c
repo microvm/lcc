@@ -233,7 +233,7 @@ Tree simplify(int op, Type ty, Tree l, Tree r) {
 			}
 			break;
 		case CVP+U:
-			xcvtcnst(P,(unsigned long)l->u.v.p,ty,u,(unsigned long)l->u.v.p);
+			xcvtcnst(P,(unsigned long long)l->u.v.p,ty,u,(unsigned long long)l->u.v.p);
 			break;
 		case CVU+P:
 			xcvtcnst(U,(void*)l->u.v.u,ty,p,(void*)l->u.v.u);
@@ -404,7 +404,7 @@ Tree simplify(int op, Type ty, Tree l, Tree r) {
 				break;
 			xfoldcnst(I,i,/,divi);
 			break;
-		case DIV+U:		
+		case DIV+U:
 			identity(r,l,U,u,1);
 			if (r->op == CNST+U && r->u.v.u == 0)
 				break;
@@ -484,7 +484,7 @@ Tree simplify(int op, Type ty, Tree l, Tree r) {
 			if (r->op == CNST+I && r->u.v.i == 1)	/* l%1 => (l,0) */
 				return tree(RIGHT, ty, root(l), cnsttree(ty, 0L));
 			break;
-		case MOD+U:		
+		case MOD+U:
 			if (r->op == CNST+U && ispow2(r->u.v.u)) /* l%2^n => l&(2^n-1) */
 				return bittree(BAND, l, cnsttree(ty, r->u.v.u - 1));
 			if (r->op == CNST+U && r->u.v.u == 0)

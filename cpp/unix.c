@@ -89,15 +89,15 @@ setup(int argc, char **argv)
 }
 
 
-
+#ifndef WIN32
 /* memmove is defined here because some vendors don't provide it at
-   all and others do a terrible job (like calling malloc) */
+all and others do a terrible job (like calling malloc) */
 void *
 memmove(void *dp, const void *sp, size_t n)
 {
 	unsigned char *cdp, *csp;
 
-	if (n==0)
+	if (n == 0)
 		return 0;
 	cdp = dp;
 	csp = (unsigned char *)sp;
@@ -114,3 +114,4 @@ memmove(void *dp, const void *sp, size_t n)
 	}
 	return 0;
 }
+#endif // !WIN32

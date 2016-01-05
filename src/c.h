@@ -34,7 +34,7 @@
 #define mkop(op,ty) (specific((op) + ttob(ty)))
 
 #define extend(x,ty) ((x)&(1<<(8*(ty)->size-1)) ? (x)|((~0UL)<<(8*(ty)->size-1)) : (x)&ones(8*(ty)->size))
-#define ones(n) ((n)>=8*sizeof (unsigned long) ? ~0UL : ~((~0UL)<<(n)))
+#define ones(n) ((n)>=8*sizeof (unsigned long long) ? ~0ULL : ~((~0ULL)<<(n)))
 
 #define isqual(t)     ((t)->op >= CONST)
 #define unqual(t)     (isqual(t) ? (t)->type : (t))
@@ -80,8 +80,8 @@ typedef struct coord {
 typedef struct table *Table;
 
 typedef union value {
-	long i;
-	unsigned long u;
+	long long i;
+	unsigned long long u;
 	long double d;
 	void *p;
 	void (*g)(void);

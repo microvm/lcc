@@ -234,12 +234,6 @@
     <ClCompile Include="tst\yacc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="lburg\gram-bison.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="lburg\gram.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\sizes.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -250,6 +244,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\c_to_md.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lburg\gram.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -473,8 +470,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="doc\install.html" />
-    <None Include="makefile.nt" />
-    <None Include="timm.mir" />
     <None Include="src\mu.md" />
+    <None Include="Makefile" />
   </ItemGroup>
 </Project>

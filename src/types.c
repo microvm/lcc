@@ -66,7 +66,7 @@ static Type xxinit(int op, char *name, Metrics m) {
 	return ty;
 }
 static Type type(int op, Type ty, int size, int align, void *sym) {
-	unsigned h = (op^((unsigned long)ty>>3))
+	unsigned h = (op^((unsigned long long)ty>>3))
 &(NELEMS(typetable)-1);
 	struct entry *tn;
 

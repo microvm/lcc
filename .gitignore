@@ -1,13 +1,14 @@
+*.i
+*.mir
 *.s
 *.s.json
-CMakeLists.txt
-bld
-.idea
+*_d.txt
+tmp
+
+#VS stuff
 Debug
 Release
 .vs
 *.sdf
 *.opensdf
-*.mir
-*_d.txt
-tmp
+*.opendb

@@ -6,13 +6,14 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerCommand>$(Configuration)\rcc.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>-target=mu -d -g9,// incr.i incr.mir 2&gt; incr_d.txt</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-target=mu -d -g9,// timm.i timm.mir 2&gt; timm_d.txt</LocalDebuggerCommandArguments>
     <LocalDebuggerEnvironment>
     </LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerCommand>$(Configuration)\rcc.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>-target=mu -d -g9,// timm.i timm.mir 2&gt; timm_d.txt</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LocalDebuggerCommand>$(Configuration)\rcc.exe</LocalDebuggerCommand>
@@ -20,5 +21,10 @@
     <LocalDebuggerCommandArguments>-target=mu -g timm.i timm.mir</LocalDebuggerCommandArguments>
     <LocalDebuggerEnvironment>
     </LocalDebuggerEnvironment>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LocalDebuggerCommand>$(Configuration)\rcc.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>-target=mu -g timm.i timm.mir</LocalDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

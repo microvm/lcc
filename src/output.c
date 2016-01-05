@@ -90,7 +90,7 @@ void vfprint(FILE *f, char *bp, const char *fmt, va_list ap) {
 				void *p = va_arg(ap, void *);
 				if (p)
 					bp = outs("0x", f, bp);
-				bp = outu((unsigned long)p, 16, f, bp);
+				bp = outu((unsigned long long)p, 16, f, bp);
 				break;
 				  }
 			case 'c': if (f) fputc(va_arg(ap, int), f); else *bp++ = va_arg(ap, int); break;

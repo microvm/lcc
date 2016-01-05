@@ -63,32 +63,36 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
-    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt clean</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;LCCDIR="$(Configuration)\\";_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt clobber all</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR="$(Configuration)\\";$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
-    <NMakeOutput>Debug\rcc.exe</NMakeOutput>
-    <NMakeCleanCommandLine>nmake -f makefile.nt clean</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR=$(Configuration);$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" FLAGS="/Ox"  /F makefile.nt all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
-    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" /F makefile.nt clean</NMakeCleanCommandLine>
+    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR="$(Configuration)\\";$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
     <NMakePreprocessorDefinitions>WIN32;LCCDIR="$(Configuration)\\";NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" FLAGS="/Ox"  /F makefile.nt clobber all</NMakeReBuildCommandLine>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <NMakeBuildCommandLine>nmake -f makefile.nt all</NMakeBuildCommandLine>
-    <NMakeOutput>Debug\bin\rcc.exe</NMakeOutput>
-    <NMakeCleanCommandLine>nmake -f makefile.nt clobber</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;LCCDIR="$(Configuration)\\";NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="cpp\cpp.c" />
@@ -111,7 +115,6 @@
     <ClCompile Include="etc\osf.c" />
     <ClCompile Include="etc\solaris.c" />
     <ClCompile Include="etc\win32.c" />
-    <ClCompile Include="lburg\gram-bison.c" />
     <ClCompile Include="lburg\gram.c" />
     <ClCompile Include="lburg\lburg.c" />
     <ClCompile Include="lib\assert.c" />
@@ -247,9 +250,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="doc\install.html" />
-    <None Include="makefile.nt" />
+    <None Include="Makefile" />
     <None Include="src\mu.md" />
-    <None Include="timm.mir" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
