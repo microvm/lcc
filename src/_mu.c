@@ -6,6 +6,14 @@
 #define STATE_LABEL(p) ((p)->x.state)
 
 //%TOP_START
+#include <stdio.h>
+#ifndef NULL
+#define NULL 0
+#endif
+
+#define ELEM(n,t) ((t)(n->elem))
+typedef char bool;
+
 static void address(Symbol, Symbol, long);
 static void blkfetch(int, int, int, int);
 static void blkloop(int, int, int, int, int, int[]);
@@ -30,42 +38,55 @@ static void target(Node);
 static Node mugen(Node);
 static Symbol rmap(int);
 
-//helper funcs
+//Doubly linked list, last node's next ptr is left null to avoid looping forever (head->prev is valid tho)
+typedef struct munode {
+	void *elem;
+	struct munode *next, *prev;
+} *MuNode;
+static MuNode muprepend(MuNode*, void*, int);
+static MuNode muappend(MuNode*, void*, int);
+
+//Global types/vars
 //define a new mu type
 static int def_type(Type, char *, char *);
 //get mu name for type
 static char *type_name(Type);
-typedef struct types {
-	Type type;
-	char *name;
-	struct types *next;
-} *Types;
-
 //get or create a const
 static char *const_name(Type, char *);
-typedef struct consts {
+//Maps an LCC type to a mutype
+typedef struct mutype {
+	Type type;
+	char *name;
+} *MuType;
+//Maps an LCC const to a mu const name
+typedef struct cnst {
 	Type type;
 	char *name;
 	char *val;
-	struct consts *next;
-} *Consts;
+} *Const;
 
-static Types types_head;
-static Consts consts_head;
+//elem is a MuType/Const
+static MuNode mutype_list = NULL;
+static MuNode muconst_list = NULL;
 
 static Symbol intreg[32], fltreg[32];
 static Symbol intregw, fltregw;
 
+char *outf;
+
+//Stmt types/vars
+typedef struct muinst {
+	char inst[1024];
+	struct muinst *parent;
+} *MuInst;
+
+//elem is a char*
+static MuNode arg_list = NULL;
+//elem is MuInst
+static MuNode inst_list = NULL;
+
 static Symbol g;
-
-typedef struct args {
-	char *arg;
-	struct args *next;
-} *Args;
-
-static Args args_list;
-
-char *result;
+char *exporting = NULL;
 //%TOP_END
 
 static short *_nts[];
@@ -75,9 +96,8 @@ static char  *_isinstruction[];
 static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
-	types_head = NULL;
-	consts_head = NULL;
-	args_list = NULL;
+	outf = string(argv[argc - 1]);
+
 	print(".funcsig @void_func () -> ()\n\n");
 
 	def_type(voidtype, "void", "void");
@@ -93,12 +113,12 @@ static void progbeg(int argc, char *argv[])
 
 	def_type(longtype, "long", "int<64>");
 	def_type(unsignedlong, "ulong", "int<64>");
-	def_type(longlong, "longlong", "int<64>");
-	def_type(unsignedlonglong, "ulonglong", "int<64>");
+	def_type(longlong, "long", "int<64>");
+	def_type(unsignedlonglong, "ulong", "int<64>");
 
 	def_type(floattype, "float", "float");
 	def_type(doubletype, "double", "double");
-	def_type(longdouble, "longdouble", "double");
+	def_type(longdouble, "double", "double");
 
 	def_type(voidptype, "ptr_void", "uptr<@void>");
 	def_type(charptype, "ptr_char", "uptr<@char>");
@@ -107,7 +127,7 @@ static void progbeg(int argc, char *argv[])
 	print("\n");
 
 	const_name(voidptype, "NULL");
-	//0b10000000000000000000000000000000, useful for negation
+	//0b10000000000000000000000000000000, useful for negation (ie could mult by -1 but why not use xor)
 	const_name(inttype, "2147483648");
 	const_name(longtype, "9223372036854775808");
 
@@ -129,7 +149,127 @@ static void progbeg(int argc, char *argv[])
 	tmask[0] = tmask[1] = ~(unsigned)0;
 	vmask[0] = vmask[1] = 0;
 }
-static void progend(void) {}
+
+int fcopy(char *src, char *dst) {
+	char buf[1024];
+	fflush(stdout);
+	FILE *srcf = fopen(src, "r"), *dstf = fopen(dst, "w");
+	if (ferror(srcf) || ferror(dstf)) {
+		fprintf(stderr, "I/O error");
+		exit(1);
+	}
+	while (fgets(buf, 1024, srcf) != NULL)
+		if (fputs(buf, dstf) == EOF)
+			break;
+	if ((!feof(srcf) && ferror(srcf)) || ferror(dstf))
+		fprintf(stderr, "I/O error");
+	fclose(srcf);
+	fclose(dstf);
+	return 0;
+}
+char *fgetl(char **buf, size_t *sz, FILE *f) {
+	size_t s = *sz;
+	char *res = fgets(*buf, s, f), *tmp;
+	while (res && (*buf)[strlen(*buf) - 1] != '\n') {
+		s *= 2;
+		tmp = allocate(s, PERM);
+		memcpy(tmp, *buf, s / 2);
+		*buf = tmp;
+		//buf + (s / 2) - 1 because we want to overwrite the trailing \0 char
+		res = fgets(*buf + (s / 2) - 1, s / 2 + 1, f);
+	}
+	*sz = s;
+	return res;
+}
+enum InstState
+{
+	UNFINISHED_INST = 1,
+	CALL_INST = 2,
+	CALL_PARAMS = 4
+};
+static void progend(void) {
+	size_t bufsz = 128;
+	char *tmpf = stringf("%s.tmp", outf), *buf = allocate(bufsz, PERM);
+	fcopy(outf, tmpf);
+
+	FILE *srcf, *dstf;
+	if (ferror(srcf = fopen(tmpf, "r"))) {
+		fprintf(stderr, "error opening %s\n", tmpf);
+	} else if (ferror(dstf = fopen(outf, "w"))) {
+		fprintf(stderr, "error opening %s\n", outf);
+		fclose(srcf);
+	}
+
+	//the following state needs to persist between lines
+	size_t inst_state = 0, depth = 0;
+	MuInst inst;
+	muappend(&inst_list, NEW0(inst,PERM), PERM);
+	while (fgetl(&buf, &bufsz, srcf) != NULL) {
+		//ignore trailing newline
+		int len = strlen(buf) - 1;
+
+		if (len && buf[len - 1] == ')' && strncmp(buf, ".funcsig", 8)) {
+			size_t inst_buf_idx = strlen(inst->inst), uinst_buf_idx;
+			for (size_t i = 0; i < len; i++) {
+				char c = buf[i];
+				switch (c) {
+				case '\t':
+					break;
+				case '(':
+					if (inst_state & CALL_INST) {
+						inst_state |= CALL_PARAMS;
+						inst->inst[inst_buf_idx++] = c;
+						break;
+					}
+					depth++;
+					inst_state |= UNFINISHED_INST;
+					uinst_buf_idx = inst_buf_idx;
+					inst_buf_idx = 0;
+					MuInst parent = inst;
+					muprepend(&inst_list, NEW0(inst, PERM), PERM);
+					inst->parent = parent;
+					break;
+				case ')':
+					if (inst_state & CALL_PARAMS) {
+						inst_state ^= CALL_PARAMS;
+						inst->inst[inst_buf_idx++] = c;
+						break;
+					}
+					depth--;
+					inst = inst->parent;
+					break;
+				case 'C':
+					if (memcmp(buf + i, "CALL", 4) == 0)
+						inst_state |= CALL_INST;
+				case ' ':
+					if (inst_state & UNFINISHED_INST)
+						inst_state ^= UNFINISHED_INST;
+				default:
+					inst->inst[inst_buf_idx++] = c;
+					if (inst_state & UNFINISHED_INST)
+						inst->parent->inst[uinst_buf_idx++] = c;
+					break;
+				}
+			}
+
+			if (!depth) {
+				do {
+					fputs("\t\t", dstf);
+					fputs(ELEM(inst_list,MuInst)->inst, dstf);
+					fputc('\n', dstf);
+				} while ((inst_list = inst_list->next) != NULL);
+
+				muappend(&inst_list, NEW0(inst, PERM), PERM);
+			}
+		} else
+			fputs(buf, dstf);
+	}
+
+	if ((!feof(srcf) && ferror(srcf)) || ferror(dstf))
+		fprintf(stderr, "I/O error");
+	fclose(srcf);
+	fclose(dstf);
+}
 
 static void address(Symbol q, Symbol p, long n)
 {
@@ -142,7 +282,42 @@ static void defaddress(Symbol p)
 }
 static void defconst(int suffix, int size, Value v)
 {
-	print("//%s called\n", __FUNCTION__);
+	char *cn;
+	switch (suffix) {
+	case F:
+		if (size == 4)
+			cn = const_name(floattype, stringf("%f", v.d));
+		else if (size == 8)
+			cn = const_name(doubletype, stringf("%f", v.d));
+		break;
+	case I:
+		if (size == 1)
+			cn = const_name(chartype, stringf("%d", v.d));
+		else if (size == 2)
+			cn = const_name(shorttype, stringf("%d", v.d));
+		else if (size == 4)
+			cn = const_name(inttype, stringf("%d", v.d));
+		else if (size == 8)
+			cn = const_name(longtype, stringf("%d", v.d));
+		break;
+	case U:
+		if (size == 1)
+			cn = const_name(unsignedchar, stringf("%u", v.d));
+		else if (size == 2)
+			cn = const_name(unsignedshort, stringf("%u", v.d));
+		else if (size == 4)
+			cn = const_name(unsignedtype, stringf("%u", v.d));
+		else if (size == 8)
+			cn = const_name(unsignedlong, stringf("%u", v.d));
+		break;
+	case P:
+		print("//TODO: implement pointer in def const\n");
+		break;
+	}
+	if (cn && exporting) {
+		printf("%%%s = @%s\n\n", exporting, cn);
+		exporting = NULL;
+	}
 }
 static void defstring(int n, char *str)
 {
@@ -164,11 +339,14 @@ static void defsymbol(Symbol p)
 		p->x.name = stringf("L%s", p->name);
 	else if (p->scope >= LOCAL)
 		p->x.name = stringf("%d_%s", p->scope, p->name);
-	else
+	else if (p->type && isscalar(p->type)) {
+		if (isunsigned(p->type))
+			p->x.name = stringf("%U", p->u.value);
+		else
+			p->x.name = stringf("%D", p->u.value);
+		const_name(p->type, p->x.name);
+	} else
 		p->x.name = p->name;
-
-	if (p->type && isscalar(p->type))
-		const_name(p->type, p->name);
 }
 
 static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
@@ -184,7 +362,7 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 		type_name(caller[i]->type);
 	for (size_t i = 0; callee[i]; i++)
 		type_name(callee[i]->type);
-	print(".funcsig @%s_sig = ( ", f->name);
+	print("\n.funcsig @%s_sig = ( ", f->name);
 	for (size_t i = 0; callee[i]; i++)
 		print("@%s ", type_name(caller[i]->type));
 	print(") -> ( @%s )\n", type_name(f->type->type));
@@ -213,8 +391,7 @@ static void import(Symbol p)
 }
 static void export(Symbol p)
 {
-	//TODO: implement export?
-	print("//%s called\n", __FUNCTION__);
+	exporting = p->x.name;
 }
 static void global(Symbol p)
 {
@@ -306,8 +483,7 @@ static Node mugen(Node forest) {
 
 	gen(forest);
 
-	for (Node p = forest; p; p = p->link)
-		mugen_var(p, 0);
+	mugen_var(forest, 0);
 
 	return forest;
 }
@@ -347,23 +523,22 @@ static void emit2(Node p)
 	short *nts;
 	if (optype(p->op) == P) {
 		switch (generic(p->op)) {
-		case ADD:
-			//Ptrs are always 8 bytes so we cast to a long
-			char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom;
-			k0 = p->kids[0];
-			while (k0->kids[0]) k0 = k0->kids[0];
-			tfrom = type_name(k0->syms[0]->type);
-			nts = _nts[_rule(p->x.state, p->x.inst)];
-			p->syms[2] = newtemp(AUTO, P, 8);
-			p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
-			print("\n\t\t%s = PTRCAST <@%s @long> ", tmp1, tfrom);
-			emitasm(p->kids[0], nts[0]);
-			print("\n\t\t%s = ADD <@long> %s ", tmp2, tmp1);
-			emitasm(p->kids[1], nts[1]);
-			print("\n\t\t%%%s = PTRCAST <@long @%s> %s\n", p->syms[2]->x.name, tfrom, tmp2);
-			break;
+		//case ADD:
+		//	//Ptrs are always 8 bytes so we cast to a long
+		//	char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom;
+		//	k0 = p->kids[0];
+		//	while (k0->kids[0]) k0 = k0->kids[0];
+		//	tfrom = type_name(k0->syms[0]->type);
+		//	nts = _nts[_rule(p->x.state, p->x.inst)];
+		//	p->syms[2] = newtemp(AUTO, P, 8);
+		//	p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
+		//	print("\n\t\t%s = PTRCAST <@%s @long> ", tmp1, tfrom);
+		//	emitasm(p->kids[0], nts[0]);
+		//	print("\n\t\t%s = ADD <@long> %s ", tmp2, tmp1);
+		//	emitasm(p->kids[1], nts[1]);
+		//	print("\n\t\t%%%s = PTRCAST <@long @%s> %s\n", p->syms[2]->x.name, tfrom, tmp2);
+		//	break;
 		case ARG:
-			Args arg = (Args)allocate(sizeof(*arg), STMT);
 			k0 = p->kids[0];
 			while (k0 && !k0->x.inst) k0 = k0->kids[0];
 			if (k0) { //TODO: fix this (might be because printf is not declared in 8q.c)
@@ -374,10 +549,7 @@ static void emit2(Node p)
 					if (k0->kids[1])
 						emitasm(k0->kids[1], nts[1]);
 				}
-				arg->arg = k0->syms[2]->x.name;
-
-				arg->next = args_list;
-				args_list = arg;
+				muappend(&arg_list, k0->syms[2]->x.name, STMT);
 			}
 			break;
 		case ASGN: //TODO: unpin stuff at func exit
@@ -393,21 +565,22 @@ static void emit2(Node p)
 					print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s1->x.name);
 					print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s0->x.name, type_name(t), type_name(s0->type), tmp);
 				} else {
+					//TODO: FIX THIS
 					print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s0->x.name, type_name(s1->type), type_name(s0->type), s1->x.name);
 				}
 			} else {
 				nts = _nts[_rule(p->x.state, p->x.inst)];
-				if(!(p->kids[1]->x.emitted) && p->kids[0]->x.inst)
+				if (!(p->kids[1]->x.emitted) && p->kids[1]->x.inst)
 					emitasm(p->kids[1], nts[1]);
-				print("\t\t%%%s = ", s0->name);
+				print("\t\t%%%s = %%", s0->x.name);
 				emitasm(p->kids[1], nts[1]);
 				print("\n");
 			}
 			break;
 		case INDIR:
-			short indir = 0;
 			k0 = p->kids[0];
-			print("\t\t%%%s = LOAD PTR <@", p->syms[2]->name);
+			print("\t\t%%%s = LOAD PTR <@", p->syms[2]->x.name);
+			short indir = 0;
 			while (k0->kids[0]) {
 				if (generic(k0->op) == INDIR)
 					indir++;
@@ -434,30 +607,26 @@ static void emit2(Node p)
 	} else {
 		switch (generic(p->op)) {
 		case ARG:
-			Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
-			arg->next = NULL;
 			k0 = p->kids[0];
 			while (k0 && !k0->x.inst) k0 = k0->kids[0];
 			if (k0) { //TODO: fix this (might be because printf is not declared in 8q.c)
 				emitasm(k0, k0->x.inst);
 				k0->x.emitted = 1;
-				arg->arg = k0->syms[2]->x.name;
-
-				while (a != NULL && a->next != NULL)
-					a = a->next;
-				if (a)
-					a->next = arg;
-				else
-					args_list = arg;
+				muappend(&arg_list, k0->syms[2]->x.name, STMT);
 			}
 			break;
 		case CALL:
-			printf("\t\tCALL <@%s_sig> @%s_ref ( ", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
-			while (args_list != NULL) {
-				print("%%%s ", args_list->arg);
-				args_list = args_list->next;
+			if (optype(p->op) == V)
+				printf("\t\t");
+			printf("CALL <@%s_sig> @%s_ref ( ", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
+			while (arg_list != NULL) {
+				print("%%%s ", arg_list->elem);
+				arg_list = arg_list->next;
 			}
 			print(")\n");
+			break;
+		case LOAD:
+
 			break;
 		default:
 			print("//OP %d NOT RECOGNIZED\n", p->op);
@@ -465,22 +634,57 @@ static void emit2(Node p)
 		}
 	}
 
-	if(p->x.registered)
+	if (p->x.registered)
 		p->x.emitted = 1;
 }
 static void doarg(Node p) {}
 static void target(Node p) {}
 static void clobber(Node p) {}
 
-//helper funcs
+static MuNode muprepend(MuNode *headp, void* e, int scope) {
+	MuNode n = NEW0(n, scope), head = *headp;
+	if (head == NULL) {
+		head = n;
+		head->prev = head;
+	}
+
+	*headp = n;
+	n->next = head;
+	n->prev = head->prev;
+	head->prev = n;
+	n->elem = e;
+
+	return n;
+}
+static MuNode muappend(MuNode *headp, void* e, int scope) {
+	MuNode n = NEW0(n, scope), head = *headp;
+	if (head == NULL) {
+		head = n;
+		*headp = head;
+	} else {
+		//update old end of list
+		head->prev->next = n;
+	}
+
+	//put the new node at the end
+	n->prev = head->prev;
+	head->prev = n;
+
+	n->elem = e;
+	return n;
+}
+
 static int def_type(Type t, char *name, char *mu_t) {
-	Types ts = NULL, n = NULL;
+	MuNode mt_node = mutype_list;
+	MuType mt;
+	char printdef = 1;
 	if (isptr(t)) {
-		for (ts = types_head; ts; ts = ts->next) {
+		for (; mt_node; mt_node = mt_node->next) {
+			mt = ELEM(mt_node, MuType);
+			if (!isptr(mt->type)) continue;
+
 			Type ts_tmp, t_tmp;
-			n = ts;
-			if (!isptr(ts->type)) continue;
-			ts_tmp = ts->type;
+			ts_tmp = mt->type;
 			t_tmp = t;
 			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
@@ -488,81 +692,99 @@ static int def_type(Type t, char *name, char *mu_t) {
 			}
 			if (ts_tmp->u.sym == t_tmp->u.sym)
 				return -1;
+			if (mt->name == string(name))
+				printdef = 0;
 		}
 	} else {
-		for (ts = types_head; ts; ts = ts->next) {
-			n = ts;
-			if (ts->type->u.sym == t->u.sym)
+		for (; mt_node; mt_node = mt_node->next) {
+			mt = ELEM(mt_node, MuType);
+			if (mt->type->u.sym == t->u.sym)
 				return -1;
+			if (mt->name == string(name))
+				printdef = 0;
 		}
 	}
 
-	ts = n;
-	NEW0(n, PERM);
-	if (ts)
-		ts->next = n;
-	else
-		types_head = n;
-	n->name = stringf("%s", name);
-	n->type = t;
-	print(".typedef @%s = %s\n", n->name, mu_t);
+	muappend(&mutype_list, NEW0(mt, PERM), PERM);
+
+	mt->name = string(name);
+	mt->type = t;
+	if (printdef)
+		print(".typedef @%s = %s\n", mt->name, mu_t);
 	return 0;
 }
 
 static char *type_name(Type t) {
-	Types ts;
+	MuNode mtnode = mutype_list;
+	MuType mt;
 	Type ts_tmp, t_tmp;
 	if (isptr(t)) {
-		for (ts = types_head; ts; ts = ts->next) {
-			if (!isptr(ts->type)) continue;
-			ts_tmp = ts->type;
+		for (; mtnode; mtnode = mtnode->next) {
+			mt = ELEM(mtnode, MuType);
+			if (!isptr(mt->type)) continue;
+			ts_tmp = mt->type;
 			t_tmp = t;
 			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
 				t_tmp = t_tmp->type;
 			}
 			if (ts_tmp->u.sym == t_tmp->u.sym)
-				return ts->name;
+				return mt->name;
 		}
 		char *name = stringf("ptr_%s", type_name(t->type));
 		def_type(t, name, stringf("uptr<@%s>", type_name(t->type)));
 		return name;
 		assert(0);
 	} else if (isarray(t)) {
-		for (ts = types_head; ts; ts = ts->next)
-			if (ts->type->u.sym == t->u.sym)
-				return ts->name;
+		for (; mtnode; mtnode = mtnode->next)
+			if (ELEM(mtnode, MuType)->type->u.sym == t->u.sym)
+				return ELEM(mtnode, MuType)->name;
 		char *name = stringf("arr_%s_%d", type_name(t->type), t->size);
 		def_type(t, name, stringf("array< @%s %d >", type_name(t->type), t->size));
 		return name;
 		assert(0);
 	} else {
-		for (ts = types_head; ts; ts = ts->next)
-			if (ts->type->u.sym == t->u.sym)
-				return ts->name;
+		for (; mtnode; mtnode = mtnode->next)
+			if (ELEM(mtnode, MuType)->type->u.sym == t->u.sym)
+				return ELEM(mtnode, MuType)->name;
 		assert(0);
 	}
 	return NULL;
 }
 
 static char *const_name(Type t, char *val) {
-	char *tn = type_name(t), *v = string(val);
-	Consts c = consts_head, n;
-	for (c = consts_head; c; c = c->next) {
-		n = c;
-		if (c->type == t && c->val == v)
-			return c->name;
-	}
-	c = n;
-	NEW0(n, PERM);
-	if (consts_head)
-		c->next = n;
-	else
-		consts_head = n;
+	char *tmp = val, *tmp2 = val;
+	size_t idx = 0;
+	do {
+		char c = *tmp;
+		if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '.')
+			continue;
+		switch (c) {
+		case '-':
+			tmp2 = allocate(strlen(tmp2) + 3, STMT);
+			tmp2[idx++] = 'n';
+			tmp2[idx++] = 'e';
+			tmp2[idx] = 'g';
+			memcpy(tmp2 + idx + 1, tmp + 1, strlen(tmp));
+			tmp = tmp2;
+			break;
+		default:
+			*tmp = '.';
+			break;
+		}
+		idx++;
+	} while (*(++tmp) != 0);
+	char *tn = type_name(t), *v = string(tmp2);
+	MuNode mcnode = muconst_list;
+	Const c;
+	for (; mcnode; mcnode = mcnode->next)
+		if (ELEM(mcnode, Const)->type == t && ELEM(mcnode, Const)->val == v)
+			return ELEM(mcnode, Const)->name;
 
-	n->name = stringf("%s_%s", tn, v);
-	n->val = v;
-	n->type = t;
-	print(".const @%s <@%s> = %s\n", n->name, tn, v);
-	return n->name;
+	muappend(&muconst_list, NEW0(c, PERM), PERM);
+	c->name = stringf("%s_%s", tn, v);
+	c->val = v;
+	c->type = t;
+	print(".const @%s <@%s> = %s\n", c->name, tn, val);
+	return c->name;
 }

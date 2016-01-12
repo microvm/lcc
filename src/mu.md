@@ -7,6 +7,14 @@
 #define STATE_LABEL(p) ((p)->x.state)
 
 //%TOP_START
+#include <stdio.h>
+#ifndef NULL
+#define NULL 0
+#endif
+
+#define ELEM(n,t) ((t)(n->elem))
+typedef char bool;
+
 static void address(Symbol, Symbol, long);
 static void blkfetch(int, int, int, int);
 static void blkloop(int, int, int, int, int, int[]);
@@ -31,42 +39,55 @@ static void target(Node);
 static Node mugen(Node);
 static Symbol rmap(int);
 
-//helper funcs
+//Doubly linked list, last node's next ptr is left null to avoid looping forever (head->prev is valid tho)
+typedef struct munode {
+	void *elem;
+	struct munode *next, *prev;
+} *MuNode;
+static MuNode muprepend(MuNode*, void*, int);
+static MuNode muappend(MuNode*, void*, int);
+
+//Global types/vars
 //define a new mu type
 static int def_type(Type, char *, char *);
 //get mu name for type
 static char *type_name(Type);
-typedef struct types {
-	Type type;
-	char *name;
-	struct types *next;
-} *Types;
-
 //get or create a const
 static char *const_name(Type, char *);
-typedef struct consts {
+//Maps an LCC type to a mutype
+typedef struct mutype {
+	Type type;
+	char *name;
+} *MuType;
+//Maps an LCC const to a mu const name
+typedef struct cnst {
 	Type type;
 	char *name;
 	char *val;
-	struct consts *next;
-} *Consts;
+} *Const;
 
-static Types types_head;
-static Consts consts_head;
+//elem is a MuType/Const
+static MuNode mutype_list = NULL;
+static MuNode muconst_list = NULL;
 
 static Symbol intreg[32], fltreg[32];
 static Symbol intregw, fltregw;
 
+char *outf;
+
+//Stmt types/vars
+typedef struct muinst {
+	char inst[1024];
+	struct muinst *parent;
+} *MuInst;
+
+//elem is a char*
+static MuNode arg_list = NULL;
+//elem is MuInst
+static MuNode inst_list = NULL;
+
 static Symbol g;
-
-typedef struct args {
-	char *arg;
-	struct args *next;
-} *Args;
-
-static Args args_list;
-
-char *result;
+char *exporting = NULL;
 //%TOP_END
 %}
 
@@ -194,367 +215,316 @@ char *result;
 %term JUMPV=584
 
 %term LABELV=600
+
+%term LOADB=233
+%term LOADF4=4321 LOADF8=8417
+%term LOADI1=1253 LOADI2=2277 LOADI4=4325 LOADI8=8421
+%term LOADP8=8423
+%term LOADU1=1254 LOADU2=2278 LOADU4=4326 LOADU8=8422
 %%
-stmt:        ARGB(INDIRB(ptr))             "#		\n"
-stmt:        ARGF4(float_var)              "#		\n"
-stmt:        ARGF8(double_var)             "#		\n"
-stmt:        ARGI4(int_var)                "#		\n"
-stmt:        ARGI8(long_var)               "#		\n"
-stmt:        ARGP8(ptr)                    "#		\n"
-stmt:        ARGU4(int_var)                "#		\n"
-stmt:        ARGU8(long_var)               "#		\n"
+stmt:	ARGB(INDIRB(pval))            "#"
+stmt:	ARGF4(fval)                   "#"
+stmt:	ARGF8(dval)                   "#"
+stmt:	ARGI4(ival)                   "#"
+stmt:	ARGI8(lval)                   "#"
+stmt:	ARGP8(pval)                   "#"
+stmt:	ARGU4(ival)                   "#"
+stmt:	ARGU8(lval)                   "#"
 
-stmt:        ASGNB(ptr, INDIRB(ptr))       "#		\n"
-stmt:        ASGNF4(ptr, float_var)        "#		\n"
-stmt:        ASGNF8(ptr, double_var)       "#		\n"
-stmt:        ASGNI1(ptr, char_var)         "#		\n"
-stmt:        ASGNI2(ptr, short_var)        "#		\n"
-stmt:        ASGNI4(ptr, int_var)          "#		\n"
-stmt:        ASGNI8(ptr, long_var)         "#		\n"
-stmt:        ASGNP8(ptr, ptr)              "#		%0 = PTRCAST <@typeof_1 @typeof_2> %1\n"
-stmt:        ASGNU1(ptr, char_var)         "#		\n"
-stmt:        ASGNU2(ptr, short_var)        "#		\n"
-stmt:        ASGNU4(ptr, int_var)          "#		\n"
-stmt:        ASGNU8(ptr, long_var)         "#		\n"
+stmt:	ASGNB(pval, INDIRB(pval))     "#\n"
+stmt:	ASGNP8(addr, pval)            "#%0 = PTRCAST <@typeof_1 @typeof_2> %1\n"
+stmt:	ASGNI1(addr, cval)            "\t\t%0 = %1\n"
+stmt:	ASGNU1(addr, cval)            "\t\t%0 = %1\n"
+stmt:	ASGNI2(addr, sval)            "\t\t%0 = %1\n"
+stmt:	ASGNU2(addr, sval)            "\t\t%0 = %1\n"
+stmt:	ASGNI4(addr, ival)            "\t\t%0 = %1\n"
+stmt:	ASGNU4(addr, ival)            "\t\t%0 = %1\n"
+stmt:	ASGNI8(addr, lval)            "\t\t%0 = %1\n"
+stmt:	ASGNU8(addr, lval)            "\t\t%0 = %1\n"
+stmt:	ASGNF4(addr, fval)            "\t\t%0 = %1\n"
+stmt:	ASGNF8(addr, dval)            "\t\t%0 = %1\n"
 
-stmt:        ASGNB(ptr, INDIRB(ptr))       "#		\n"
-stmt:        ASGNF4(ptr, float_var)        "#		\n"
-stmt:        ASGNF8(ptr, double_var)       "#		\n"
-stmt:        ASGNI1(ptr, char_var)         "#		\n"
-stmt:        ASGNI2(ptr, short_var)        "#		\n"
-stmt:        ASGNI4(ptr, int_var)          "#		\n"
-stmt:        ASGNI8(ptr, long_var)         "#		\n"
-stmt:        ASGNP8(ptr, ptr)              "#		%0 = PTRCAST <@typeof_1 @typeof_2> %1\n"
-stmt:        ASGNU1(ptr, char_var)         "#		\n"
-stmt:        ASGNU2(ptr, short_var)        "#		\n"
-stmt:        ASGNU4(ptr, int_var)          "#		\n"
-stmt:        ASGNU8(ptr, long_var)         "#		\n"
+stmt:	LTI4(ival, ival)              "\t\t%%%b = SLT <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LTU4(ival, ival)              "\t\t%%%b = ULT <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LTI8(lval, lval)              "\t\t%%%b = SLT <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LTU8(lval, lval)              "\t\t%%%b = ULT <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LTF4(fval, fval)              "\t\t%%%b = FOLT <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LTF8(dval, dval)              "\t\t%%%b = FOLT <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
 
-stmt:        LTI4(int_var, int_var)        "\t\t%%%b = SLT <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LTU4(int_var, int_var)        "\t\t%%%b = ULT <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LTI8(long_var, long_var)      "\t\t%%%b = SLT <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LTU8(long_var, long_var)      "\t\t%%%b = ULT <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LTF4(float_var, float_var)    "\t\t%%%b = FOLT <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LTF8(double_var, double_var)  "\t\t%%%b = FOLT <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LEI4(ival, ival)              "\t\t%%%b = SLE <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LEU4(ival, ival)              "\t\t%%%b = ULE <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LEI8(lval, lval)              "\t\t%%%b = SLE <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LEU8(lval, lval)              "\t\t%%%b = ULE <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LEF4(fval, fval)              "\t\t%%%b = FOLE <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LEF8(dval, dval)              "\t\t%%%b = FOLE <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
 
-stmt:        LEI4(int_var, int_var)        "\t\t%%%b = SLE <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LEU4(int_var, int_var)        "\t\t%%%b = ULE <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LEI8(long_var, long_var)      "\t\t%%%b = SLE <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LEU8(long_var, long_var)      "\t\t%%%b = ULE <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LEF4(float_var, float_var)    "\t\t%%%b = FOLE <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        LEF8(double_var, double_var)  "\t\t%%%b = FOLE <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	EQI4(ival, ival)              "\t\t%%%b = EQ <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	EQU4(ival, ival)              "\t\t%%%b = EQ <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	EQI8(lval, lval)              "\t\t%%%b = EQ <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	EQU8(lval, lval)              "\t\t%%%b = EQ <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	EQF4(fval, fval)              "\t\t%%%b = FOEQ <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	EQF8(dval, dval)              "\t\t%%%b = FOEQ <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
 
-stmt:        EQI4(int_var, int_var)        "\t\t%%%b = EQ <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        EQU4(int_var, int_var)        "\t\t%%%b = EQ <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        EQI8(long_var, long_var)      "\t\t%%%b = EQ <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        EQU8(long_var, long_var)      "\t\t%%%b = EQ <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        EQF4(float_var, float_var)    "\t\t%%%b = FOEQ <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        EQF8(double_var, double_var)  "\t\t%%%b = FOEQ <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GEI4(ival, ival)              "\t\t%%%b = SGE <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GEU4(ival, ival)              "\t\t%%%b = UGE <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GEI8(lval, lval)              "\t\t%%%b = SGE <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GEU8(lval, lval)              "\t\t%%%b = UGE <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GEF4(fval, fval)              "\t\t%%%b = FOGE <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GEF8(dval, dval)              "\t\t%%%b = FOGE <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
 
-stmt:        GEI4(int_var, int_var)        "\t\t%%%b = SGE <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GEU4(int_var, int_var)        "\t\t%%%b = UGE <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GEI8(long_var, long_var)      "\t\t%%%b = SGE <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GEU8(long_var, long_var)      "\t\t%%%b = UGE <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GEF4(float_var, float_var)    "\t\t%%%b = FOGE <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GEF8(double_var, double_var)  "\t\t%%%b = FOGE <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GTI4(ival, ival)              "\t\t%%%b = SGT <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GTU4(ival, ival)              "\t\t%%%b = UGT <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GTI8(lval, lval)              "\t\t%%%b = SGT <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GTU8(lval, lval)              "\t\t%%%b = UGT <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GTF4(fval, fval)              "\t\t%%%b = FOGT <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	GTF8(dval, dval)              "\t\t%%%b = FOGT <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
 
-stmt:        GTI4(int_var, int_var)        "\t\t%%%b = SGT <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GTU4(int_var, int_var)        "\t\t%%%b = UGT <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GTI8(long_var, long_var)      "\t\t%%%b = SGT <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GTU8(long_var, long_var)      "\t\t%%%b = UGT <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GTF4(float_var, float_var)    "\t\t%%%b = FOGT <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        GTF8(double_var, double_var)  "\t\t%%%b = FOGT <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	NEI4(ival, ival)              "\t\t%%%b = NE <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	NEU4(ival, ival)              "\t\t%%%b = NE <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	NEI8(lval, lval)              "\t\t%%%b = NE <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	NEU8(lval, lval)              "\t\t%%%b = NE <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	NEF4(fval, fval)              "\t\t%%%b = FONE <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	NEF8(dval, dval)              "\t\t%%%b = FONE <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
 
-stmt:        NEI4(int_var, int_var)        "\t\t%%%b = NE <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        NEU4(int_var, int_var)        "\t\t%%%b = NE <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        NEI8(long_var, long_var)      "\t\t%%%b = NE <@long> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        NEU8(long_var, long_var)      "\t\t%%%b = NE <@ulong> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        NEF4(float_var, float_var)    "\t\t%%%b = FONE <@float> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
-stmt:        NEF8(double_var, double_var)  "\t\t%%%b = FONE <@double> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
+stmt:	LABELV                        "\t%%%a:\n"
+stmt:	JUMPV(ADDRGP8)                "#\t\tBRANCH %%%0\n"
+stmt:	JUMPV(val)                    "#\n"
+stmt:	CALLV(addr)                   "#CALL <@sig> @func_ref (%args)\n"
+stmt:	RETI4(ival)                   "\t\tRET %0\n"
+stmt:	RETU4(ival)                   "\t\tRET %0\n"
+stmt:	RETI8(lval)                   "\t\tRET %0\n"
+stmt:	RETU8(lval)                   "\t\tRET %0\n"
+stmt:	RETP8(pval)                   "\t\tRET %0\n"
+stmt:	RETF4(fval)                   "\t\tRET %0\n"
+stmt:	RETF8(dval)                   "\t\tRET %0\n"
+stmt:	RETV                          "\t\tRET ()\n"
 
-stmt:        LABELV                        "\t%%%a:\n"
-stmt:        JUMPV(ptr)                    "\t\tBRANCH %%%0\n"
-stmt:        CALLV(ptr)                    "#		CALL <@sig> @func_ref (%args)\n"
-stmt:        RETF4(float_var)              "\t\tRET %0\n"
-stmt:        RETF8(double_var)             "\t\tRET %0\n"
-stmt:        RETI4(int_var)                "\t\tRET %0\n"
-stmt:        RETI8(long_var)               "\t\tRET %0\n"
-stmt:        RETP8(ptr)                    "\t\tRET %0\n"
-stmt:        RETU4(int_var)                "\t\tRET %0\n"
-stmt:        RETU8(long_var)               "\t\tRET %0\n"
-stmt:        RETV                          "\t\tRET ()\n"
+addr:	ADDRGP8                       "@%a"
+addr:	ADDRFP8                       "%%%a"
+addr:	ADDRLP8                       "%%%a"
 
-char_var:    CNSTI1                        "@char_%a"
-char_var:    CNSTU1                        "@uchar_%a"
-char_var:    CVII1(short_var)              "\t\t%%%c = TRUNC <@short @char> %0 //short(%a)->char\n"
-char_var:    CVII1(int_var)                "\t\t%%%c = TRUNC <@int @char> %0 //int(%a)->char\n"
-char_var:    CVII1(long_var)               "\t\t%%%c = TRUNC <@long @char> %0 //long(%a)->char\n"
-char_var:    CVIU1(char_var)               "\t\t%%%c = %%%0 //char(%a)->uchar\n"
-char_var:    CVIU1(short_var)              "\t\t%%%c = TRUNC <@short @uchar> %0 //short(%a)->uchar\n"
-char_var:    CVIU1(int_var)                "\t\t%%%c = TRUNC <@int @uchar> %0 //int(%a)->uchar\n"
-char_var:    CVIU1(long_var)               "\t\t%%%c = TRUNC <@long @uchar> %0 //long(%a)->uchar\n"
-char_var:    CVUI1(char_var)               "\t\t%%%c = %%%0 //uchar(%a)->char\n"
-char_var:    CVUI1(short_var)              "\t\t%%%c = TRUNC <@ushort @char> %0 //ushort(%a)->char\n"
-char_var:    CVUI1(int_var)                "\t\t%%%c = TRUNC <@uint @char> %0 //uint(%a)->char\n"
-char_var:    CVUI1(long_var)               "\t\t%%%c = TRUNC <@ulong @char> %0 //ulong(%a)->char\n"
-char_var:    CVUU1(short_var)              "\t\t%%%c = TRUNC <@ushort @uchar> %0 //ushort(%a)->uchar\n"
-char_var:    CVUU1(int_var)                "\t\t%%%c = TRUNC <@uint @uchar> %0 //uint(%a)->uchar\n"
-char_var:    CVUU1(long_var)               "\t\t%%%c = TRUNC <@ulong @uchar> %0 //ulong(%a)->uchar\n"
-char_var:    INDIRI1(var)                  "%0"
-char_var:    INDIRI1(ptr)                  "#		\n"
-char_var:    INDIRU1(var)                  "%0"
-char_var:    INDIRU1(ptr)                  "#		\n"
+val:	cval                          "%0"
+val:	sval                          "%0"
+val:	ival                          "%0"
+val:	lval                          "%0"
+val:	pval                          "%0"
+val:	fval                          "%0"
+val:	dval                          "%0"
 
-short_var:   CNSTI2                        "@short_%a"
-short_var:   CNSTU2                        "@ushort_%a"
-short_var:   CVII2(char_var)               "\t\t%%%c = SEXT <@char @short> %0 //char(%a)->short\n"
-short_var:   CVII2(int_var)                "\t\t%%%c = TRUNC <@int @short> %0 //int(%a)->short\n"
-short_var:   CVII2(long_var)               "\t\t%%%c = TRUNC <@long @short> %0 //long(%a)->short\n"
-short_var:   CVIU2(char_var)               "\t\t%%%c = SEXT <@char @ushort> %0 //char(%a)->ushort\n"
-short_var:   CVIU2(short_var)              "\t\t%%%c = %%%0 //short(%a)->ushort\n"
-short_var:   CVIU2(int_var)                "\t\t%%%c = TRUNC <@int @ushort> %0 //int(%a)->ushort\n"
-short_var:   CVIU2(long_var)               "\t\t%%%c = TRUNC <@long @ushort> %0 //long(%a)->ushort\n"
-short_var:   CVUI2(char_var)               "\t\t%%%c = ZEXT <@uchar @short> %0 //uchar(%a)->short\n"
-short_var:   CVUI2(int_var)                "\t\t%%%c = TRUNC <@uint @short> %0 //uint(%a)->short\n"
-short_var:   CVUI2(long_var)               "\t\t%%%c = TRUNC <@ulong @char> %0 //ulong(%a)->short\n"
-short_var:   CVUU2(char_var)               "\t\t%%%c = ZEXT <@uchar @ushort> %0 //uchar(%a)->ushort\n"
-short_var:   CVUI2(short_var)              "\t\t%%%c = %%%0 //ushort(%a)->short\n"
-short_var:   CVUU2(int_var)                "\t\t%%%c = TRUNC <@uint @ushort> %0 //uint(%a)->ushort\n"
-short_var:   CVUU2(long_var)               "\t\t%%%c = TRUNC <@ulong @ushort> %0 //ulong(%a)->ushort\n"
-short_var:   INDIRI2(var)                  "%0"
-short_var:   INDIRI2(ptr)                  "#		\n"
-short_var:   INDIRU2(var)                  "%0"
-short_var:   INDIRU2(ptr)                  "#		\n"
+cval:	cvar                          "%0"
+cval:	LOADI1(val)                   "%0"
+cval:	LOADU1(val)                   "%0"
+cval:	CNSTI1                        "@char_%a"
+cval:	CNSTU1                        "@uchar_%a"
+cval:	INDIRI1(addr)                 "%0"
+cval:	INDIRI1(ADDRGP8)              "@%0"
+cval:	INDIRU1(addr)                 "%0"
+cval:	INDIRU1(ADDRGP8)              "@%0"
 
-int_var:     NEGI4(int_var)                "\t\t%%%c = XOR <@int> %0 @int_2147483648\n"
-int_var:     BCOMI4(int_var)               "\t\t%%%c = XOR <@int> %0 %1\n"
-int_var:     BCOMU4(int_var)               "\t\t%%%c = XOR <@uint> %0 %1\n"
-int_var:     BANDI4(int_var, char_var)     "\t\t%%%c = AND <@int> %0 %1 //int_var, char_var\\n"
-int_var:     BANDI4(int_var, short_var)    "\t\t%%%c = AND <@int> %0 %1 //int_var, short_var\\n"
-int_var:     BANDI4(int_var, int_var)      "t\t%%%c = AND <@int> %0 %1 //int_var, int_var\\n"
-int_var:     BANDI4(int_var, long_var)     "\t\t%%%c = AND <@int> %0 %1 //int_var, long_var\\n"
-int_var:     BANDU4(int_var, char_var)     "\t\t%%%c = AND <@uint> %0 %1 //int_var, char_var\\n"
-int_var:     BANDU4(int_var, short_var)    "\t\t%%%c = AND <@uint> %0 %1 //int_var, short_var\\n"
-int_var:     BANDU4(int_var, int_var)      "\t\t%%%c = AND <@uint> %0 %1 //int_var, int_var\\n"
-int_var:     BANDU4(int_var, long_var)     "\t\t%%%c = AND <@uint> %0 %1 //int_var, long_var\\n"
-int_var:     BORI4(int_var, char_var)      "\t\t%%%c = OR <@int> %0 %1 //int_var, char_var\\n"
-int_var:     BORI4(int_var, short_var)     "\t\t%%%c = OR <@int> %0 %1 //int_var, short_var\\n"
-int_var:     BORI4(int_var, int_var)       "\t\t%%%c = OR <@int> %0 %1 //int_var, int_var\\n"
-int_var:     BORI4(int_var, long_var)      "\t\t%%%c = OR <@int> %0 %1 //int_var, long_var\\n"
-int_var:     BORU4(int_var, char_var)      "\t\t%%%c = OR <@uint> %0 %1 //int_var, char_var\\n"
-int_var:     BORU4(int_var, short_var)     "\t\t%%%c = OR <@uint> %0 %1 //int_var, short_var\\n"
-int_var:     BORU4(int_var, int_var)       "\t\t%%%c = OR <@uint> %0 %1 //int_var, int_var\\n"
-int_var:     BORU4(int_var, long_var)      "\t\t%%%c = OR <@uint> %0 %1 //int_var, long_var\\n"
-int_var:     BXORI4(int_var, char_var)     "\t\t%%%c = XOR <@int> %0 %1 //int_var, char_var\\n"
-int_var:     BXORI4(int_var, short_var)    "\t\t%%%c = XOR <@int> %0 %1 //int_var, short_var\\n"
-int_var:     BXORI4(int_var, int_var)      "\t\t%%%c = XOR <@int> %0 %1 //int_var, int_var\\n"
-int_var:     BXORI4(int_var, long_var)     "\t\t%%%c = XOR <@int> %0 %1 //int_var, long_var\\n"
-int_var:     BXORU4(int_var, char_var)     "\t\t%%%c = XOR <@uint> %0 %1 //int_var, char_var\\n"
-int_var:     BXORU4(int_var, short_var)    "\t\t%%%c = XOR <@uint> %0 %1 //int_var, short_var\\n"
-int_var:     BXORU4(int_var, int_var)      "\t\t%%%c = XOR <@uint> %0 %1 //int_var, int_var\\n"
-int_var:     BXORU4(int_var, long_var)     "\t\t%%%c = XOR <@uint> %0 %1 //int_var, long_var\\n"
-int_var:     LSHI4(int_var, char_var)      "\t\t%%%c = SHL <@int> %0 %1 //int_var, char_var\\n"
-int_var:     LSHI4(int_var, short_var)     "\t\t%%%c = SHL <@int> %0 %1 //int_var, short_var\\n"
-int_var:     LSHI4(int_var, int_var)       "\t\t%%%c = SHL <@int> %0 %1 //int_var, int_var\\n"
-int_var:     LSHI4(int_var, long_var)      "\t\t%%%c = SHL <@int> %0 %1 //int_var, long_var\\n"
-int_var:     LSHU4(int_var, char_var)      "\t\t%%%c = SHL <@uint> %0 %1 //int_var, char_var\\n"
-int_var:     LSHU4(int_var, short_var)     "\t\t%%%c = SHL <@uint> %0 %1 //int_var, short_var\\n"
-int_var:     LSHU4(int_var, int_var)       "\t\t%%%c = SHL <@uint> %0 %1 //int_var, int_var\\n"
-int_var:     LSHU4(int_var, long_var)      "\t\t%%%c = SHL <@uint> %0 %1 //int_var, long_var\\n"
-int_var:     RSHI4(int_var, char_var)      "\t\t%%%c = ASHR <@int> %0 %1 //int_var, char_var\\n"
-int_var:     RSHI4(int_var, short_var)     "\t\t%%%c = ASHR <@int> %0 %1 //int_var, short_var\\n"
-int_var:     RSHI4(int_var, int_var)       "\t\t%%%c = ASHR <@int> %0 %1 //int_var, int_var\\n"
-int_var:     RSHI4(int_var, long_var)      "\t\t%%%c = ASHR <@int> %0 %1 //int_var, long_var\\n"
-int_var:     RSHU4(int_var, char_var)      "\t\t%%%c = LSHR <@uint> %0 %1 //int_var, char_var\\n"
-int_var:     RSHU4(int_var, short_var)     "\t\t%%%c = LSHR <@uint> %0 %1 //int_var, short_var\\n"
-int_var:     RSHU4(int_var, int_var)       "\t\t%%%c = LSHR <@uint> %0 %1 //int_var, int_var\\n"
-int_var:     RSHU4(int_var, long_var)      "\t\t%%%c = LSHR <@uint> %0 %1 //int_var, long_var\\n"
+cvar:	CVII1(sval)                   "(%%%c = TRUNC <@short @char> %0)\n"
+cvar:	CVII1(ival)                   "(%%%c = TRUNC <@int @char> %0)\n"
+cvar:	CVII1(lval)                   "(%%%c = TRUNC <@long @char> %0)\n"
+cvar:	CVIU1(cval)                   "(%%%c = %%%0)\n"
+cvar:	CVIU1(sval)                   "(%%%c = TRUNC <@short @uchar> %0)\n"
+cvar:	CVIU1(ival)                   "(%%%c = TRUNC <@int @uchar> %0)\n"
+cvar:	CVIU1(lval)                   "(%%%c = TRUNC <@long @uchar> %0)\n"
+cvar:	CVUI1(cval)                   "(%%%c = %%%0)\n"
+cvar:	CVUI1(sval)                   "(%%%c = TRUNC <@ushort @char> %0)\n"
+cvar:	CVUI1(ival)                   "(%%%c = TRUNC <@uint @char> %0)\n"
+cvar:	CVUI1(lval)                   "(%%%c = TRUNC <@ulong @char> %0)\n"
+cvar:	CVUU1(sval)                   "(%%%c = TRUNC <@ushort @uchar> %0)\n"
+cvar:	CVUU1(ival)                   "(%%%c = TRUNC <@uint @uchar> %0)\n"
+cvar:	CVUU1(lval)                   "(%%%c = TRUNC <@ulong @uchar> %0)\n"
 
-int_var:     ADDI4(int_var, int_var)       "\t\t%%%c = ADD <@int> %0 %1\n"
-int_var:     ADDU4(int_var, int_var)       "\t\t%%%c = ADD <@uint> %0 %1\n"
-int_var:     SUBI4(int_var, int_var)       "\t\t%%%c = SUB <@int> %0 %1\n"
-int_var:     SUBU4(int_var, int_var)       "\t\t%%%c = SUB <@uint> %0 %1\n"
-int_var:     MULI4(int_var, int_var)       "\t\t%%%c = MUL <@int> %0 %1\n"
-int_var:     MULU4(int_var, int_var)       "\t\t%%%c = MUL <@uint> %0 %1\n"
-int_var:     DIVI4(int_var, int_var)       "\t\t%%%c = SDIV <@int> %0 %1\n"
-int_var:     DIVU4(int_var, int_var)       "\t\t%%%c = UDIV <@uint> %0 %1\n"
-int_var:     MODI4(int_var, int_var)       "\t\t%%%c = SREM <@int> %0 %1\n"
-int_var:     MODU4(int_var, int_var)       "\t\t%%%c = UREM <@int> %0 %1\n"
+sval:	svar                          "%0"
+sval:	LOADI2(val)                   "%0"
+sval:	LOADU2(val)                   "%0"
+sval:	CNSTI2                        "@short_%a"
+sval:	CNSTU2                        "@ushort_%a"
+sval:	INDIRI2(addr)                 "%0"
+sval:	INDIRI2(ADDRGP8)              "@%0"
+sval:	INDIRU2(addr)                 "%0"
+sval:	INDIRU2(ADDRGP8)              "@%0"
 
-int_var:     CNSTI4                        "@int_%a"
-int_var:     CNSTU4                        "@uint_%a"
-int_var:     CALLI4(ptr)                   "#		%%%c = CALL <@sig> @func_ref (%args)\n"
-int_var:     CALLU4(ptr)                   "#		%%%c = CALL <@sig> @func_ref (%args)\n"
-int_var:     INDIRI4(var)                  "%0"
-int_var:     INDIRI4(ptr)                  "#		\n"
-int_var:     INDIRU4(var)                  "%0"
-int_var:     INDIRU4(ptr)                  "#		\n"
+svar:	CVII2(cval)                   "(%%%c = SEXT <@char @short> %0)\n"
+svar:	CVII2(ival)                   "(%%%c = TRUNC <@int @short> %0)\n"
+svar:	CVII2(lval)                   "(%%%c = TRUNC <@long @short> %0)\n"
+svar:	CVIU2(cval)                   "(%%%c = SEXT <@char @ushort> %0)\n"
+svar:	CVIU2(sval)                   "(%%%c = %%%0)\n"
+svar:	CVIU2(ival)                   "(%%%c = TRUNC <@int @ushort> %0)\n"
+svar:	CVIU2(lval)                   "(%%%c = TRUNC <@long @ushort> %0)\n"
+svar:	CVUI2(cval)                   "(%%%c = ZEXT <@uchar @short> %0)\n"
+svar:	CVUI2(ival)                   "(%%%c = TRUNC <@uint @short> %0)\n"
+svar:	CVUI2(lval)                   "(%%%c = TRUNC <@ulong @char> %0)\n"
+svar:	CVUU2(cval)                   "(%%%c = ZEXT <@uchar @ushort> %0)\n"
+svar:	CVUI2(sval)                   "(%%%c = %%%0)\n"
+svar:	CVUU2(ival)                   "(%%%c = TRUNC <@uint @ushort> %0)\n"
+svar:	CVUU2(lval)                   "(%%%c = TRUNC <@ulong @ushort> %0)\n"
 
-int_var:     CVII4(char_var)               "\t\t%%%c = SEXT <@char @int> %0 //char(%a)->int\n"
-int_var:     CVII4(short_var)              "\t\t%%%c = SEXT <@short @int> %0 //short(%a)->int\n"
-int_var:     CVII4(long_var)               "\t\t%%%c = TRUNC <@long @int> %0 //long(%a)->int\n"
-int_var:     CVIU4(char_var)               "\t\t%%%c = SEXT <@char @uint> %0 //char(%a)->uint\n"
-int_var:     CVIU4(short_var)              "\t\t%%%c = SEXT <@short @uint> %0 //short(%a)->uint\n"
-int_var:     CVIU4(int_var)                "\t\t%%%c = %%%0 //int(%a)->uint\n"
-int_var:     CVIU4(long_var)               "\t\t%%%c = TRUNC <@long @uint> %0 //long(%a)->uint\n"
-int_var:     CVUI4(char_var)               "\t\t%%%c = ZEXT <@uchar @int> %0 //uchar(%a)->int\n"
-int_var:     CVUI4(short_var)              "\t\t%%%c = ZEXT <@ushort @int> %0 //ushort(%a)->int\n"
-int_var:     CVUI4(int_var)                "\t\t%%%c = %%%0 //uint(%a)->int\n"
-int_var:     CVUI4(long_var)               "\t\t%%%c = TRUNC <@ulong @int> %0 //ulong(%a)->int\n"
-int_var:     CVUU4(char_var)               "\t\t%%%c = ZEXT <@uchar @uint> %0 //uchar(%a)->uint\n"
-int_var:     CVUU4(short_var)              "\t\t%%%c = ZEXT <@ushort @uint> %0 //ushort(%a)->uint\n"
-int_var:     CVUU4(long_var)               "\t\t%%%c = TRUNC <@ulong @uint> %0 //ulong(%a)->uint\n"
-int_var:     CVFI4(float_var)              "\t\t%%%c = FPTOSI <@float @int> %0 //float(%a)->int\n"
-int_var:     CVFI4(double_var)             "\t\t%%%c = FPTOSI <@double @int> %0 //double(%a)->int\n"
+ival:	ivar                          "%0"
+ival:	LOADI4(val)                   "%0"
+ival:	LOADU4(val)                   "%0"
+ival:	CNSTI4                        "@int_%a"
+ival:	CNSTU4                        "@uint_%a"
+ival:	INDIRI4(addr)                 "%0"
+ival:	INDIRI4(ADDRGP8)              "@%0"
+ival:	INDIRU4(addr)                 "%0"
+ival:	INDIRU4(ADDRGP8)              "@%0"
 
-long_var:    NEGI8(long_var)               "\t\t%%%c = XOR <@long> %0 @long_9223372036854775808\n"
-long_var:    BCOMI8(long_var)              "\t\t%%%c = XOR <@long> %0 %1\n"
-long_var:    BCOMU8(long_var)              "\t\t%%%c = XOR <@ulong> %0 %1\n"
-long_var:    BANDI8(long_var, char_var)    "\t\t%%%c = AND <@long> %0 %1 //long_var, char_var\\n"
-long_var:    BANDI8(long_var, short_var)   "\t\t%%%c = AND <@long> %0 %1 //long_var, short_var\\n"
-long_var:    BANDI8(long_var, int_var)     "\t\t%%%c = AND <@long> %0 %1 //long_var, int_var\\n"
-long_var:    BANDI8(long_var, long_var)    "\t\t%%%c = AND <@long> %0 %1 //long_var, long_var\\n"
-long_var:    BANDU8(long_var, char_var)    "\t\t%%%c = AND <@ulong> %0 %1 //long_var, char_var\\n"
-long_var:    BANDU8(long_var, short_var)   "\t\t%%%c = AND <@ulong> %0 %1 //long_var, short_var\\n"
-long_var:    BANDU8(long_var, int_var)     "\t\t%%%c = AND <@ulong> %0 %1 //long_var, int_var\\n"
-long_var:    BANDU8(long_var, long_var)    "\t\t%%%c = AND <@ulong> %0 %1 //long_var, long_var\\n"
-long_var:    BORI8(long_var, char_var)     "\t\t%%%c = OR <@long> %0 %1 //long_var, char_var\\n"
-long_var:    BORI8(long_var, short_var)    "\t\t%%%c = OR <@long> %0 %1 //long_var, short_var\\n"
-long_var:    BORI8(long_var, int_var)      "\t\t%%%c = OR <@long> %0 %1 //long_var, int_var\\n"
-long_var:    BORI8(long_var, long_var)     "\t\t%%%c = OR <@long> %0 %1 //long_var, long_var\\n"
-long_var:    BORU8(long_var, char_var)     "\t\t%%%c = OR <@ulong> %0 %1 //long_var, char_var\\n"
-long_var:    BORU8(long_var, short_var)    "\t\t%%%c = OR <@ulong> %0 %1 //long_var, short_var\\n"
-long_var:    BORU8(long_var, int_var)      "\t\t%%%c = OR <@ulong> %0 %1 //long_var, int_var\\n"
-long_var:    BORU8(long_var, long_var)     "\t\t%%%c = OR <@ulong> %0 %1 //long_var, long_var\\n"
-long_var:    BXORI8(long_var, char_var)    "\t\t%%%c = XOR <@long> %0 %1 //long_var, char_var\\n"
-long_var:    BXORI8(long_var, short_var)   "\t\t%%%c = XOR <@long> %0 %1 //long_var, short_var\\n"
-long_var:    BXORI8(long_var, int_var)     "\t\t%%%c = XOR <@long> %0 %1 //long_var, int_var\\n"
-long_var:    BXORI8(long_var, long_var)    "\t\t%%%c = XOR <@long> %0 %1 //long_var, long_var\\n"
-long_var:    BXORU8(long_var, char_var)    "\t\t%%%c = XOR <@ulong> %0 %1 //long_var, char_var\\n"
-long_var:    BXORU8(long_var, short_var)   "\t\t%%%c = XOR <@ulong> %0 %1 //long_var, short_var\\n"
-long_var:    BXORU8(long_var, int_var)     "\t\t%%%c = XOR <@ulong> %0 %1 //long_var, int_var\\n"
-long_var:    BXORU8(long_var, long_var)    "\t\t%%%c = XOR <@ulong> %0 %1 //long_var, long_var\\n"
-long_var:    LSHI8(long_var, char_var)     "\t\t%%%c = SHL <@long> %0 %1 //long_var, char_var\\n"
-long_var:    LSHI8(long_var, short_var)    "\t\t%%%c = SHL <@long> %0 %1 //long_var, short_var\\n"
-long_var:    LSHI8(long_var, int_var)      "\t\t%%%c = SHL <@long> %0 %1 //long_var, int_var\\n"
-long_var:    LSHI8(long_var, long_var)     "\t\t%%%c = SHL <@long> %0 %1 //long_var, long_var\\n"
-long_var:    LSHU8(long_var, char_var)     "\t\t%%%c = SHL <@ulong> %0 %1 //long_var, char_var\\n"
-long_var:    LSHU8(long_var, short_var)    "\t\t%%%c = SHL <@ulong> %0 %1 //long_var, short_var\\n"
-long_var:    LSHU8(long_var, int_var)      "\t\t%%%c = SHL <@ulong> %0 %1 //long_var, int_var\\n"
-long_var:    LSHU8(long_var, long_var)     "\t\t%%%c = SHL <@ulong> %0 %1 //long_var, long_var\\n"
-long_var:    RSHI8(long_var, char_var)     "\t\t%%%c = ASHR <@long> %0 %1 //long_var, char_var\\n"
-long_var:    RSHI8(long_var, short_var)    "\t\t%%%c = ASHR <@long> %0 %1 //long_var, short_var\\n"
-long_var:    RSHI8(long_var, int_var)      "\t\t%%%c = ASHR <@long> %0 %1 //long_var, int_var\\n"
-long_var:    RSHI8(long_var, long_var)     "\t\t%%%c = ASHR <@long> %0 %1 //long_var, long_var\\n"
-long_var:    RSHU8(long_var, char_var)     "\t\t%%%c = LSHR <@ulong> %0 %1 //long_var, char_var\\n"
-long_var:    RSHU8(long_var, short_var)    "\t\t%%%c = LSHR <@ulong> %0 %1 //long_var, short_var\\n"
-long_var:    RSHU8(long_var, int_var)      "\t\t%%%c = LSHR <@ulong> %0 %1 //long_var, int_var\\n"
-long_var:    RSHU8(long_var, long_var)     "\t\t%%%c = LSHR <@ulong> %0 %1 //long_var, long_var\\n"
+ivar:	NEGI4(ival)                   "(%%%c = XOR <@int> %0 @int_2147483648)\n"
+ivar:	BCOMI4(ival)                  "(%%%c = XOR <@int> %0 @int_4294967295)\n"
+ivar:	BCOMU4(ival)                  "(%%%c = XOR <@uint> %0 @int_4294967295)\n"
+ivar:	BANDI4(ival, val)             "(%%%c = AND <@int> %0 %1)\n"
+ivar:	BANDU4(ival, val)             "(%%%c = AND <@uint> %0 %1)\n"
+ivar:	BORI4(ival, val)              "(%%%c = OR <@int> %0 %1)\n"
+ivar:	BORU4(ival, val)              "(%%%c = OR <@uint> %0 %1)\n"
+ivar:	BXORI4(ival, val)             "(%%%c = XOR <@int> %0 %1)\n"
+ivar:	BXORU4(ival, val)             "(%%%c = XOR <@uint> %0 %1)\n"
+ivar:	LSHI4(ival, val)              "(%%%c = SHL <@int> %0 %1)\n"
+ivar:	LSHU4(ival, val)              "(%%%c = SHL <@uint> %0 %1)\n"
+ivar:	RSHI4(ival, val)              "(%%%c = ASHR <@int> %0 %1)\n"
+ivar:	RSHU4(ival, val)              "(%%%c = LSHR <@uint> %0 %1)\n"
 
-long_var:    ADDI8(long_var, long_var)     "\t\t%%%c = ADD <@long> %0 %1\n"
-long_var:    ADDU8(long_var, long_var)     "\t\t%%%c = ADD <@ulong> %0 %1\n"
-long_var:    SUBI8(long_var, long_var)     "\t\t%%%c = SUB <@long> %0 %1\n"
-long_var:    SUBU8(long_var, long_var)     "\t\t%%%c = SUB <@ulong> %0 %1\n"
-long_var:    MULI8(long_var, long_var)     "\t\t%%%c = MUL <@long> %0 %1\n"
-long_var:    MULU8(long_var, long_var)     "\t\t%%%c = MUL <@ulong> %0 %1\n"
-long_var:    DIVI8(long_var, long_var)     "\t\t%%%c = SDIV <@long> %0 %1\n"
-long_var:    DIVU8(long_var, long_var)     "\t\t%%%c = UDIV <@ulong> %0 %1\n"
-long_var:    MODI8(long_var, long_var)     "\t\t%%%c = SREM <@long> %0 %1\n"
-long_var:    MODU8(long_var, long_var)     "\t\t%%%c = UREM <@long> %0 %1\n"
+ivar:	ADDI4(ival, ival)             "(%%%c = ADD <@int> %0 %1)\n"
+ivar:	ADDU4(ival, ival)             "(%%%c = ADD <@uint> %0 %1)\n"
+ivar:	SUBI4(ival, ival)             "(%%%c = SUB <@int> %0 %1)\n"
+ivar:	SUBU4(ival, ival)             "(%%%c = SUB <@uint> %0 %1)\n"
+ivar:	MULI4(ival, ival)             "(%%%c = MUL <@int> %0 %1)\n"
+ivar:	MULU4(ival, ival)             "(%%%c = MUL <@uint> %0 %1)\n"
+ivar:	DIVI4(ival, ival)             "(%%%c = SDIV <@int> %0 %1)\n"
+ivar:	DIVU4(ival, ival)             "(%%%c = UDIV <@uint> %0 %1)\n"
+ivar:	MODI4(ival, ival)             "(%%%c = SREM <@int> %0 %1)\n"
+ivar:	MODU4(ival, ival)             "(%%%c = UREM <@int> %0 %1)\n"
 
-long_var:    CNSTI8                        "@long_%a"
-long_var:    CNSTU8                        "@ulong_%a"
-long_var:    CALLI8(ptr)                   "#		%%%c = CALL <@sig> @func_ref (%args)\n"
-long_var:    CALLU8(ptr)                   "#		%%%c = CALL <@sig> @func_ref (%args)\n"
-long_var:    INDIRI8(var)                  "%0"
-long_var:    INDIRI8(ptr)                  "#		\n"
-long_var:    INDIRU8(var)                  "%0"
-long_var:    INDIRU8(ptr)                  "#		\n"
+ivar:	CALLI4(addr)                  "#CALL <@sig> @func_ref (%args)"
+ivar:	CALLU4(addr)                  "#CALL <@sig> @func_ref (%args)"
 
-long_var:    CVII8(char_var)               "\t\t%%%c = SEXT <@char @long> %0 //char(%a)->long\n"
-long_var:    CVII8(short_var)              "\t\t%%%c = SEXT <@short @long> %0 //short(%a)->long\n"
-long_var:    CVII8(int_var)                "\t\t%%%c = SEXT <@int @long> %0 //int(%a)->long\n"
-long_var:    CVIU8(char_var)               "\t\t%%%c = SEXT <@char @ulong> %0 //char(%a)->ulong\n"
-long_var:    CVIU8(short_var)              "\t\t%%%c = SEXT <@short @ulong> %0 //short(%a)->ulong\n"
-long_var:    CVIU8(int_var)                "\t\t%%%c = SEXT <@int @ulong> %0 //int(%a)->ulong\n"
-long_var:    CVIU8(long_var)               "\t\t%%%c = %%%0 //long(%a)->ulong\n"
-long_var:    CVUI8(char_var)               "\t\t%%%c = ZEXT <@uchar @long> %0 //uchar(%a)->long\n"
-long_var:    CVUI8(short_var)              "\t\t%%%c = ZEXT <@ushort @long> %0 //ushort(%a)->long\n"
-long_var:    CVUI8(int_var)                "\t\t%%%c = ZEXT <@uint @long> %0 //uint(%a)->long\n"
-long_var:    CVUI8(long_var)               "\t\t%%%c = %%%0 //ulong(%a)->long\n"
-long_var:    CVUU8(char_var)               "\t\t%%%c = ZEXT <@uchar @ulong> %0 //uchar(%a)->ulong\n"
-long_var:    CVUU8(short_var)              "\t\t%%%c = ZEXT <@ushort @ulong> %0 //ushort(%a)->ulong\n"
-long_var:    CVUU8(int_var)                "\t\t%%%c = ZEXT <@uint @ulong> %0 //uchar(%a)->ulong\n"
-long_var:    CVFI8(float_var)              "\t\t%%%c = FPTOSI <@float @long> %0 //float(%a)->long\n"
-long_var:    CVFI8(double_var)             "\t\t%%%c = FPTOSI <@double @long> %0 //double(%a)->long\n"
-long_var:    CVPU8(ptr)                    "\t\t%%%c = PTRCAST <@ptr_void @ulong> %0 //ptr->long\n"
+ivar:	CVII4(cval)                   "(%%%c = SEXT <@char @int> %0)\n"
+ivar:	CVII4(sval)                   "(%%%c = SEXT <@short @int> %0)\n"
+ivar:	CVII4(lval)                   "(%%%c = TRUNC <@long @int> %0)\n"
+ivar:	CVIU4(cval)                   "(%%%c = SEXT <@char @uint> %0)\n"
+ivar:	CVIU4(sval)                   "(%%%c = SEXT <@short @uint> %0)\n"
+ivar:	CVIU4(ival)                   "(%%%c = %%%0)\n"
+ivar:	CVIU4(lval)                   "(%%%c = TRUNC <@long @uint> %0)\n"
+ivar:	CVUI4(cval)                   "(%%%c = ZEXT <@uchar @int> %0)\n"
+ivar:	CVUI4(sval)                   "(%%%c = ZEXT <@ushort @int> %0)\n"
+ivar:	CVUI4(ival)                   "(%%%c = %%%0)\n"
+ivar:	CVUI4(lval)                   "(%%%c = TRUNC <@ulong @int> %0)\n"
+ivar:	CVUU4(cval)                   "(%%%c = ZEXT <@uchar @uint> %0)\n"
+ivar:	CVUU4(sval)                   "(%%%c = ZEXT <@ushort @uint> %0)\n"
+ivar:	CVUU4(lval)                   "(%%%c = TRUNC <@ulong @uint> %0)\n"
+ivar:	CVFI4(fval)                   "(%%%c = FPTOSI <@float @int> %0)\n"
+ivar:	CVFI4(dval)                   "(%%%c = FPTOSI <@double @int> %0)\n"
 
-float_var:   NEGF4(float_var)              "#		// Negate float value %0\n"
-float_var:   ADDF4(float_var, float_var)   "\t\t%%%c = FADD <@float> %0 %1\n"
-float_var:   SUBF4(float_var, float_var)   "\t\t%%%c = FSUB <@float> %0 %1\n"
-float_var:   MULF4(float_var, float_var)   "\t\t%%%c = FMUL <@float> %0 %1\n"
-float_var:   DIVF4(float_var, float_var)   "\t\t%%%c = FDIV <@float> %0 %1\n"
+lval:	lvar                          "%0"
+lval:	LOADI8(val)                   "%0"
+lval:	LOADU8(val)                   "%0"
+lval:	CNSTI8                        "@long_%a"
+lval:	CNSTU8                        "@long_%a"
+lval:	INDIRI8(addr)                 "%0"
+lval:	INDIRI8(ADDRGP8)              "@%0"
+lval:	INDIRU8(addr)                 "%0"
+lval:	INDIRU8(ADDRGP8)              "@%0"
 
-float_var:   CALLF4(ptr)                   "#		%%%c = CALL <@sig> @func_ref (%args)\n"
-float_var:   CNSTF4                        "@float_%a"
-float_var:   INDIRF4(var)                  "%0"
-float_var:   INDIRF4(ptr)                  "#		\n"
+lvar:	NEGI8(lval)                   "(%%%c = XOR <@long> %0 @long_9223372036854775808)\n"
+lvar:	BCOMI8(lval)                  "(%%%c = XOR <@long> %0 @long_18446744073709551615)\n"
+lvar:	BCOMU8(lval)                  "(%%%c = XOR <@ulong> %0 @long_18446744073709551615)\n"
+lvar:	BANDI8(lval, val)             "(%%%c = AND <@long> %0 %1)\n"
+lvar:	BANDU8(lval, val)             "(%%%c = AND <@ulong> %0 %1)\n"
+lvar:	BORI8(lval, val)              "(%%%c = OR <@long> %0 %1)\n"
+lvar:	BORU8(lval, val)              "(%%%c = OR <@ulong> %0 %1)\n"
+lvar:	BXORI8(lval, val)             "(%%%c = XOR <@long> %0 %1)\n"
+lvar:	BXORU8(lval, val)             "(%%%c = XOR <@ulong> %0 %1)\n"
+lvar:	LSHI8(lval, val)              "(%%%c = SHL <@long> %0 %1)\n"
+lvar:	LSHU8(lval, val)              "(%%%c = SHL <@ulong> %0 %1)\n"
+lvar:	RSHI8(lval, val)              "(%%%c = ASHR <@long> %0 %1)\n"
+lvar:	RSHU8(lval, val)              "(%%%c = LSHR <@ulong> %0 %1)\n"
 
-float_var:   CVIF4(char_var)               "\t\t%%%c = SITOFP <@char @float> %0 //char(%a)->float\n"
-float_var:   CVIF4(short_var)              "\t\t%%%c = SITOFP <@short @float> %0 //short(%a)->float\n"
-float_var:   CVIF4(int_var)                "\t\t%%%c = SITOFP <@int @float> %0 //int(%a)->float\n"
-float_var:   CVIF4(long_var)               "\t\t%%%c = SITOFP <@long @float> %0 //long(%a)->float\n"
-float_var:   CVFF4(double_var)             "\t\t%%%c = FPTRUNC <@double @float> %0 //double(%a)->float\n"
+lvar:	ADDI8(lval, lval)             "(%%%c = ADD <@long> %0 %1)\n"
+lvar:	ADDU8(lval, lval)             "(%%%c = ADD <@ulong> %0 %1)\n"
+lvar:	SUBI8(lval, lval)             "(%%%c = SUB <@long> %0 %1)\n"
+lvar:	SUBU8(lval, lval)             "(%%%c = SUB <@ulong> %0 %1)\n"
+lvar:	MULI8(lval, lval)             "(%%%c = MUL <@long> %0 %1)\n"
+lvar:	MULU8(lval, lval)             "(%%%c = MUL <@ulong> %0 %1)\n"
+lvar:	DIVI8(lval, lval)             "(%%%c = SDIV <@long> %0 %1)\n"
+lvar:	DIVU8(lval, lval)             "(%%%c = UDIV <@ulong> %0 %1)\n"
+lvar:	MODI8(lval, lval)             "(%%%c = SREM <@long> %0 %1)\n"
+lvar:	MODU8(lval, lval)             "(%%%c = UREM <@long> %0 %1)\n"
 
-double_var:  NEGF4(double_var)             "#		// Negate double value %0\n"
-double_var:  ADDF8(double_var, double_var) "\t\t%%%c = FADD <@double> %0 %1\n"
-double_var:  SUBF8(double_var, double_var) "\t\t%%%c = FSUB <@double> %0 %1\n"
-double_var:  MULF8(double_var, double_var) "\t\t%%%c = FMUL <@double> %0 %1\n"
-double_var:  DIVF8(double_var, double_var) "\t\t%%%c = FDIV <@double> %0 %1\n"
+lvar:	CALLI8(addr)                  "#CALL <@sig> @func_ref (%args)"
+lvar:	CALLU8(addr)                  "#CALL <@sig> @func_ref (%args)"
 
-double_var:  CALLF8(ptr)                   "#		%%%c = CALL <@sig> @func_ref (%args)\n"
-double_var:  CNSTF8                        "@double_%a"
-double_var:  INDIRF8(var)                  "%0"
-double_var:  INDIRF8(ptr)                  "#		\n"
+lvar:	CVII8(cval)                   "(%%%c = SEXT <@char @long> %0)\n"
+lvar:	CVII8(sval)                   "(%%%c = SEXT <@short @long> %0)\n"
+lvar:	CVII8(ival)                   "(%%%c = SEXT <@int @long> %0)\n"
+lvar:	CVIU8(cval)                   "(%%%c = SEXT <@char @ulong> %0)\n"
+lvar:	CVIU8(sval)                   "(%%%c = SEXT <@short @ulong> %0)\n"
+lvar:	CVIU8(ival)                   "(%%%c = SEXT <@int @ulong> %0)\n"
+lvar:	CVIU8(lval)                   "(%%%c = %%%0)\n"
+lvar:	CVUI8(cval)                   "(%%%c = ZEXT <@uchar @long> %0)\n"
+lvar:	CVUI8(sval)                   "(%%%c = ZEXT <@ushort @long> %0)\n"
+lvar:	CVUI8(ival)                   "(%%%c = ZEXT <@uint @long> %0)\n"
+lvar:	CVUI8(lval)                   "(%%%c = %%%0)\n"
+lvar:	CVUU8(cval)                   "(%%%c = ZEXT <@uchar @ulong> %0)\n"
+lvar:	CVUU8(sval)                   "(%%%c = ZEXT <@ushort @ulong> %0)\n"
+lvar:	CVUU8(ival)                   "(%%%c = ZEXT <@uint @ulong> %0)\n"
+lvar:	CVFI8(fval)                   "(%%%c = FPTOSI <@float @long> %0)\n"
+lvar:	CVFI8(dval)                   "(%%%c = FPTOSI <@double @long> %0)\n"
+lvar:	CVPU8(pval)                   "(%%%c = PTRCAST <@ptr_void @ulong> %0)\n"
 
-double_var:  CVIF8(char_var)               "\t\t%%%c = SITOFP <@char @double> %0 //char(%a)->double\n"
-double_var:  CVIF8(short_var)              "\t\t%%%c = SITOFP <@short @double> %0 //short(%a)->double\n"
-double_var:  CVIF8(int_var)                "\t\t%%%c = SITOFP <@int @double> %0 //int(%a)->double\n"
-double_var:  CVIF8(long_var)               "\t\t%%%c = SITOFP <@long @double> %0 //long(%a)->double\n"
-double_var:  CVFF8(float_var)              "\t\t%%%c = FPEXT <@float @double> %0 //float(%a)->double\n"
+pval:	pvar                          "%0"
+pval:	LOADP8(val)                   "%0"
+pval:	CNSTP8                        "%0"
+pval:	INDIRP8(addr)                 "%0"
+pval:	INDIRP8(ADDRGP8)              "@%0"
 
-var:         ADDRFP8                       "%%%a" 1
-var:         ADDRGP8                       "%a"   1
-var:         ADDRLP8                       "%%%a" 1
+pvar:	CALLP8(addr)                  "#CALL <@sig> @func_ref (%args)"
+pvar:	CVUP8(cval)                   "#		%%%c = PTRCAST <@uchar @ptr_type> %0\n"
+pvar:	CVUP8(sval)                   "#		%%%c = PTRCAST <@ushort @ptr_type> %0\n"
+pvar:	CVUP8(ival)                   "#		%%%c = PTRCAST <@uint @ptr_type> %0\n"
+pvar:	CVUP8(lval)                   "#		%%%c = PTRCAST <@ulong @ptr_type> %0\n"
+pvar:	ADDP8(val, val)               "#\n"
+pvar:	SUBP8(val, val)               "#\n"
 
-ptr:         ADDRFP8                       "%%%a" 2
-ptr:         ADDRGP8                       "%a"   2
-ptr:         ADDRLP8                       "%a"   2
-ptr:         CALLP8(ptr)                   "#		%%%c = CALL <@sig> @func_ref (%args)\n"
-ptr:         CNSTP8                        "#		\n"
-ptr:         CVUP8(char_var)               "#		%%%c = PTRCAST <@uchar @ptr_type> %0 //char_var\\n"
-ptr:         CVUP8(short_var)              "#		%%%c = PTRCAST <@ushort @ptr_type> %0 //short_var\\n"
-ptr:         CVUP8(int_var)                "#		%%%c = PTRCAST <@uint @ptr_type> %0 //int_var\\n"
-ptr:         CVUP8(long_var)               "#		%%%c = PTRCAST <@ulong @ptr_type> %0 //long_var\\n"
-ptr:         INDIRP8(var)                  "%0"
-ptr:         INDIRP8(ptr)                  "#		\n"
-ptr:         ADDP8(ptr, char_var)          "#\n"
-ptr:         ADDP8(ptr, short_var)         "#\n"
-ptr:         ADDP8(ptr, int_var)           "#\n"
-ptr:         ADDP8(ptr, long_var)          "#\n"
-ptr:         ADDP8(char_var, ptr)          "#\n"
-ptr:         ADDP8(short_var, ptr)         "#\n"
-ptr:         ADDP8(int_var, ptr)           "#\n"
-ptr:         ADDP8(long_var, ptr)          "#\n"
-ptr:         SUBP8(ptr, char_var)          "#\n"
-ptr:         SUBP8(ptr, short_var)         "#\n"
-ptr:         SUBP8(ptr, int_var)           "#\n"
-ptr:         SUBP8(ptr, long_var)          "#\n"
-ptr:         SUBP8(char_var, ptr)          "#\n"
-ptr:         SUBP8(short_var, ptr)         "#\n"
-ptr:         SUBP8(int_var, ptr)           "#\n"
-ptr:         SUBP8(long_var, ptr)          "#\n"
-ptr:         SUBP8(ptr, ptr)               "#\n"
+fval:	fvar                          "%0"
+fval:	LOADF4(val)                   "%0"
+fval:	CNSTF4                        "@float_%a"
+fval:	INDIRF4(addr)                 "%0"
+fval:	INDIRF4(ADDRGP8)              "@%0"
+
+fvar:	NEGF4(fval)                   "(%%%c = FMUL <@float> %0 @float_neg1)\n"
+fvar:	ADDF4(fval, fval)             "(%%%c = FADD <@float> %0 %1)\n"
+fvar:	SUBF4(fval, fval)             "(%%%c = FSUB <@float> %0 %1)\n"
+fvar:	MULF4(fval, fval)             "(%%%c = FMUL <@float> %0 %1)\n"
+fvar:	DIVF4(fval, fval)             "(%%%c = FDIV <@float> %0 %1)\n"
+
+fvar:	CALLF4(addr)                  "#CALL <@sig> @func_ref (%args)"
+
+fvar:	CVIF4(cval)                   "(%%%c = SITOFP <@char @float> %0)\n"
+fvar:	CVIF4(sval)                   "(%%%c = SITOFP <@short @float> %0)\n"
+fvar:	CVIF4(ival)                   "(%%%c = SITOFP <@int @float> %0)\n"
+fvar:	CVIF4(lval)                   "(%%%c = SITOFP <@long @float> %0)\n"
+fvar:	CVFF4(dval)                   "(%%%c = FPTRUNC <@double @float> %0)\n"
+
+dval:	dvar                          "%0"
+dval:	LOADF8(val)                   "%0"
+dval:	CNSTF8                        "@double_%a"
+dval:	INDIRF8(addr)                 "%0"
+dval:	INDIRF8(ADDRGP8)              "@%0"
+
+dvar:	NEGF8(dval)                   "(%%%c = FMUL <@double> %0 @double_neg1)\n"
+dvar:	ADDF8(dval, dval)             "(%%%c = FADD <@double> %0 %1)\n"
+dvar:	SUBF8(dval, dval)             "(%%%c = FSUB <@double> %0 %1)\n"
+dvar:	MULF8(dval, dval)             "(%%%c = FMUL <@double> %0 %1)\n"
+dvar:	DIVF8(dval, dval)             "(%%%c = FDIV <@double> %0 %1)\n"
+
+dvar:	CALLF8(addr)                  "#CALL <@sig> @func_ref (%args)"
+
+dvar:	CVIF8(cval)                   "(%%%c = SITOFP <@char @double> %0)\n"
+dvar:	CVIF8(sval)                   "(%%%c = SITOFP <@short @double> %0)\n"
+dvar:	CVIF8(ival)                   "(%%%c = SITOFP <@int @double> %0)\n"
+dvar:	CVIF8(lval)                   "(%%%c = SITOFP <@long @double> %0)\n"
+dvar:	CVFF8(fval)                   "(%%%c = FPEXT <@float @double> %0)\n"
 %%
 Interface muIR = {
     1, 1, 0,  /* char */
@@ -567,13 +537,13 @@ Interface muIR = {
     8, 8, 0,  /* long double */
     8, 8, 0,  /* T * */
     0, 1, 0,  /* struct */
-    1,        /* little_endian */
-    0,        /* mulops_calls */
-    1,        /* wants_callb */
-    1,        /* wants_argb */
-    0,        /* left_to_right, allows pushing args onto args_list like a stack */
-    0,        /* wants_dag */
-    0,        /* unsigned_char */
+    1,	/* little_endian */
+    0,	/* mulops_calls */
+    1,	/* wants_callb */
+    1,	/* wants_argb */
+    0,	/* left_to_right, allows pushing args onto args_list like a stack */
+    0,	/* wants_dag */
+    0,	/* unsigned_char */
     address,
     blockbeg, /* lcc */
     blockend, /* lcc */
@@ -594,23 +564,23 @@ Interface muIR = {
     space,
     0, 0, 0, 0, 0, 0, 0,
     {
-    1,              //unsigned char max_unaligned_load;
-    rmap,           //Symbol(*rmap)(int);
+    1,	      //unsigned char max_unaligned_load;
+    rmap,	   //Symbol(*rmap)(int);
     blkfetch,       //void(*blkfetch)(int size, int off, int reg, int tmp);
     blkstore,       //void(*blkstore)(int size, int off, int reg, int tmp);
-    blkloop,        //void(*blkloop)(int dreg, int doff, int sreg, int soff, int size, int tmps[]);
-    _label,         //void(*_label)(Node);
-    _rule,          //int(*_rule)(void*, int);
-    _nts,           //short **_nts;
-    _kids,          //void(*_kids)(Node, int, Node*);
-    _string,        //char **_string;
+    blkloop,	//void(*blkloop)(int dreg, int doff, int sreg, int soff, int size, int tmps[]);
+    _label,	 //void(*_label)(Node);
+    _rule,	  //int(*_rule)(void*, int);
+    _nts,	   //short **_nts;
+    _kids,	  //void(*_kids)(Node, int, Node*);
+    _string,	//char **_string;
     _templates,     //char **_templates;
     _isinstruction, //char *_isinstruction;
-    _ntname,        //char **_ntname;
-    emit2,          //void(*emit2)(Node);
-    doarg,          //void(*doarg)(Node);
-    target,         //void(*target)(Node);
-    clobber         //void(*clobber)(Node);
+    _ntname,	//char **_ntname;
+    emit2,	  //void(*emit2)(Node);
+    doarg,	  //void(*doarg)(Node);
+    target,	 //void(*target)(Node);
+    clobber	 //void(*clobber)(Node);
     }
 };
 
@@ -618,9 +588,8 @@ Interface muIR = {
 static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
-	types_head = NULL;
-	consts_head = NULL;
-	args_list = NULL;
+	outf = string(argv[argc - 1]);
+
 	print(".funcsig @void_func () -> ()\n\n");
 
 	def_type(voidtype, "void", "void");
@@ -636,12 +605,12 @@ static void progbeg(int argc, char *argv[])
 
 	def_type(longtype, "long", "int<64>");
 	def_type(unsignedlong, "ulong", "int<64>");
-	def_type(longlong, "longlong", "int<64>");
-	def_type(unsignedlonglong, "ulonglong", "int<64>");
+	def_type(longlong, "long", "int<64>");
+	def_type(unsignedlonglong, "ulong", "int<64>");
 
 	def_type(floattype, "float", "float");
 	def_type(doubletype, "double", "double");
-	def_type(longdouble, "longdouble", "double");
+	def_type(longdouble, "double", "double");
 
 	def_type(voidptype, "ptr_void", "uptr<@void>");
 	def_type(charptype, "ptr_char", "uptr<@char>");
@@ -650,7 +619,7 @@ static void progbeg(int argc, char *argv[])
 	print("\n");
 
 	const_name(voidptype, "NULL");
-	//0b10000000000000000000000000000000, useful for negation
+	//0b10000000000000000000000000000000, useful for negation (ie could mult by -1 but why not use xor)
 	const_name(inttype, "2147483648");
 	const_name(longtype, "9223372036854775808");
 
@@ -672,7 +641,127 @@ static void progbeg(int argc, char *argv[])
 	tmask[0] = tmask[1] = ~(unsigned)0;
 	vmask[0] = vmask[1] = 0;
 }
-static void progend(void) {}
+
+int fcopy(char *src, char *dst) {
+	char buf[1024];
+	fflush(stdout);
+	FILE *srcf = fopen(src, "r"), *dstf = fopen(dst, "w");
+	if (ferror(srcf) || ferror(dstf)) {
+		fprintf(stderr, "I/O error");
+		exit(1);
+	}
+	while (fgets(buf, 1024, srcf) != NULL)
+		if (fputs(buf, dstf) == EOF)
+			break;
+	if ((!feof(srcf) && ferror(srcf)) || ferror(dstf))
+		fprintf(stderr, "I/O error");
+	fclose(srcf);
+	fclose(dstf);
+	return 0;
+}
+char *fgetl(char **buf, size_t *sz, FILE *f) {
+	size_t s = *sz;
+	char *res = fgets(*buf, s, f), *tmp;
+	while (res && (*buf)[strlen(*buf) - 1] != '\n') {
+		s *= 2;
+		tmp = allocate(s, PERM);
+		memcpy(tmp, *buf, s / 2);
+		*buf = tmp;
+		//buf + (s / 2) - 1 because we want to overwrite the trailing \0 char
+		res = fgets(*buf + (s / 2) - 1, s / 2 + 1, f);
+	}
+	*sz = s;
+	return res;
+}
+enum InstState
+{
+	UNFINISHED_INST = 1,
+	CALL_INST = 2,
+	CALL_PARAMS = 4
+};
+static void progend(void) {
+	size_t bufsz = 128;
+	char *tmpf = stringf("%s.tmp", outf), *buf = allocate(bufsz, PERM);
+	fcopy(outf, tmpf);
+
+	FILE *srcf, *dstf;
+	if (ferror(srcf = fopen(tmpf, "r"))) {
+		fprintf(stderr, "error opening %s\n", tmpf);
+	} else if (ferror(dstf = fopen(outf, "w"))) {
+		fprintf(stderr, "error opening %s\n", outf);
+		fclose(srcf);
+	}
+
+	//the following state needs to persist between lines
+	size_t inst_state = 0, depth = 0;
+	MuInst inst;
+	muappend(&inst_list, NEW0(inst,PERM), PERM);
+	while (fgetl(&buf, &bufsz, srcf) != NULL) {
+		//ignore trailing newline
+		int len = strlen(buf) - 1;
+
+		if (len && buf[len - 1] == ')' && strncmp(buf, ".funcsig", 8)) {
+			size_t inst_buf_idx = strlen(inst->inst), uinst_buf_idx;
+			for (size_t i = 0; i < len; i++) {
+				char c = buf[i];
+				switch (c) {
+				case '\t':
+					break;
+				case '(':
+					if (inst_state & CALL_INST) {
+						inst_state |= CALL_PARAMS;
+						inst->inst[inst_buf_idx++] = c;
+						break;
+					}
+					depth++;
+					inst_state |= UNFINISHED_INST;
+					uinst_buf_idx = inst_buf_idx;
+					inst_buf_idx = 0;
+					MuInst parent = inst;
+					muprepend(&inst_list, NEW0(inst, PERM), PERM);
+					inst->parent = parent;
+					break;
+				case ')':
+					if (inst_state & CALL_PARAMS) {
+						inst_state ^= CALL_PARAMS;
+						inst->inst[inst_buf_idx++] = c;
+						break;
+					}
+					depth--;
+					inst = inst->parent;
+					break;
+				case 'C':
+					if (memcmp(buf + i, "CALL", 4) == 0)
+						inst_state |= CALL_INST;
+				case ' ':
+					if (inst_state & UNFINISHED_INST)
+						inst_state ^= UNFINISHED_INST;
+				default:
+					inst->inst[inst_buf_idx++] = c;
+					if (inst_state & UNFINISHED_INST)
+						inst->parent->inst[uinst_buf_idx++] = c;
+					break;
+				}
+			}
+
+			if (!depth) {
+				do {
+					fputs("\t\t", dstf);
+					fputs(ELEM(inst_list,MuInst)->inst, dstf);
+					fputc('\n', dstf);
+				} while ((inst_list = inst_list->next) != NULL);
+
+				muappend(&inst_list, NEW0(inst, PERM), PERM);
+			}
+		} else
+			fputs(buf, dstf);
+	}
+
+	if ((!feof(srcf) && ferror(srcf)) || ferror(dstf))
+		fprintf(stderr, "I/O error");
+	fclose(srcf);
+	fclose(dstf);
+}
 
 static void address(Symbol q, Symbol p, long n)
 {
@@ -685,7 +774,42 @@ static void defaddress(Symbol p)
 }
 static void defconst(int suffix, int size, Value v)
 {
-	print("//%s called\n", __FUNCTION__);
+	char *cn;
+	switch (suffix) {
+	case F:
+		if (size == 4)
+			cn = const_name(floattype, stringf("%f", v.d));
+		else if (size == 8)
+			cn = const_name(doubletype, stringf("%f", v.d));
+		break;
+	case I:
+		if (size == 1)
+			cn = const_name(chartype, stringf("%d", v.d));
+		else if (size == 2)
+			cn = const_name(shorttype, stringf("%d", v.d));
+		else if (size == 4)
+			cn = const_name(inttype, stringf("%d", v.d));
+		else if (size == 8)
+			cn = const_name(longtype, stringf("%d", v.d));
+		break;
+	case U:
+		if (size == 1)
+			cn = const_name(unsignedchar, stringf("%u", v.d));
+		else if (size == 2)
+			cn = const_name(unsignedshort, stringf("%u", v.d));
+		else if (size == 4)
+			cn = const_name(unsignedtype, stringf("%u", v.d));
+		else if (size == 8)
+			cn = const_name(unsignedlong, stringf("%u", v.d));
+		break;
+	case P:
+		print("//TODO: implement pointer in def const\n");
+		break;
+	}
+	if (cn && exporting) {
+		printf("%%%s = @%s\n\n", exporting, cn);
+		exporting = NULL;
+	}
 }
 static void defstring(int n, char *str)
 {
@@ -707,11 +831,14 @@ static void defsymbol(Symbol p)
 		p->x.name = stringf("L%s", p->name);
 	else if (p->scope >= LOCAL)
 		p->x.name = stringf("%d_%s", p->scope, p->name);
-	else
+	else if (p->type && isscalar(p->type)) {
+		if (isunsigned(p->type))
+			p->x.name = stringf("%U", p->u.value);
+		else
+			p->x.name = stringf("%D", p->u.value);
+		const_name(p->type, p->x.name);
+	} else
 		p->x.name = p->name;
-
-	if (p->type && isscalar(p->type))
-		const_name(p->type, p->name);
 }
 
 static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
@@ -727,7 +854,7 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 		type_name(caller[i]->type);
 	for (size_t i = 0; callee[i]; i++)
 		type_name(callee[i]->type);
-	print(".funcsig @%s_sig = ( ", f->name);
+	print("\n.funcsig @%s_sig = ( ", f->name);
 	for (size_t i = 0; callee[i]; i++)
 		print("@%s ", type_name(caller[i]->type));
 	print(") -> ( @%s )\n", type_name(f->type->type));
@@ -756,8 +883,7 @@ static void import(Symbol p)
 }
 static void export(Symbol p)
 {
-	//TODO: implement export?
-	print("//%s called\n", __FUNCTION__);
+	exporting = p->x.name;
 }
 static void global(Symbol p)
 {
@@ -849,8 +975,7 @@ static Node mugen(Node forest) {
 
 	gen(forest);
 
-	for (Node p = forest; p; p = p->link)
-		mugen_var(p, 0);
+	mugen_var(forest, 0);
 
 	return forest;
 }
@@ -890,23 +1015,22 @@ static void emit2(Node p)
 	short *nts;
 	if (optype(p->op) == P) {
 		switch (generic(p->op)) {
-		case ADD:
-			//Ptrs are always 8 bytes so we cast to a long
-			char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom;
-			k0 = p->kids[0];
-			while (k0->kids[0]) k0 = k0->kids[0];
-			tfrom = type_name(k0->syms[0]->type);
-			nts = _nts[_rule(p->x.state, p->x.inst)];
-			p->syms[2] = newtemp(AUTO, P, 8);
-			p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
-			print("\n\t\t%s = PTRCAST <@%s @long> ", tmp1, tfrom);
-			emitasm(p->kids[0], nts[0]);
-			print("\n\t\t%s = ADD <@long> %s ", tmp2, tmp1);
-			emitasm(p->kids[1], nts[1]);
-			print("\n\t\t%%%s = PTRCAST <@long @%s> %s\n", p->syms[2]->x.name, tfrom, tmp2);
-			break;
+		//case ADD:
+		//	//Ptrs are always 8 bytes so we cast to a long
+		//	char *tmp1 = stringf("%%%d_tmp", genlabel(1)), *tmp2 = stringf("%%%d_tmp", genlabel(1)), *tfrom;
+		//	k0 = p->kids[0];
+		//	while (k0->kids[0]) k0 = k0->kids[0];
+		//	tfrom = type_name(k0->syms[0]->type);
+		//	nts = _nts[_rule(p->x.state, p->x.inst)];
+		//	p->syms[2] = newtemp(AUTO, P, 8);
+		//	p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
+		//	print("\n\t\t%s = PTRCAST <@%s @long> ", tmp1, tfrom);
+		//	emitasm(p->kids[0], nts[0]);
+		//	print("\n\t\t%s = ADD <@long> %s ", tmp2, tmp1);
+		//	emitasm(p->kids[1], nts[1]);
+		//	print("\n\t\t%%%s = PTRCAST <@long @%s> %s\n", p->syms[2]->x.name, tfrom, tmp2);
+		//	break;
 		case ARG:
-			Args arg = (Args)allocate(sizeof(*arg), STMT);
 			k0 = p->kids[0];
 			while (k0 && !k0->x.inst) k0 = k0->kids[0];
 			if (k0) { //TODO: fix this (might be because printf is not declared in 8q.c)
@@ -917,10 +1041,7 @@ static void emit2(Node p)
 					if (k0->kids[1])
 						emitasm(k0->kids[1], nts[1]);
 				}
-				arg->arg = k0->syms[2]->x.name;
-
-				arg->next = args_list;
-				args_list = arg;
+				muappend(&arg_list, k0->syms[2]->x.name, STMT);
 			}
 			break;
 		case ASGN: //TODO: unpin stuff at func exit
@@ -936,21 +1057,22 @@ static void emit2(Node p)
 					print("\t\t%s = COMMINST @uvm.native.pin <@%s> @%s\n", tmp, type_name(t), s1->x.name);
 					print("\t\t%%%s = PTRCAST <uptr<@%s> @%s> %s\n", s0->x.name, type_name(t), type_name(s0->type), tmp);
 				} else {
+					//TODO: FIX THIS
 					print("\t\t%%%s = PTRCAST <@%s @%s> %s\n", s0->x.name, type_name(s1->type), type_name(s0->type), s1->x.name);
 				}
 			} else {
 				nts = _nts[_rule(p->x.state, p->x.inst)];
-				if(!(p->kids[1]->x.emitted) && p->kids[0]->x.inst)
+				if (!(p->kids[1]->x.emitted) && p->kids[1]->x.inst)
 					emitasm(p->kids[1], nts[1]);
-				print("\t\t%%%s = ", s0->name);
+				print("\t\t%%%s = %%", s0->x.name);
 				emitasm(p->kids[1], nts[1]);
 				print("\n");
 			}
 			break;
 		case INDIR:
-			short indir = 0;
 			k0 = p->kids[0];
-			print("\t\t%%%s = LOAD PTR <@", p->syms[2]->name);
+			print("\t\t%%%s = LOAD PTR <@", p->syms[2]->x.name);
+			short indir = 0;
 			while (k0->kids[0]) {
 				if (generic(k0->op) == INDIR)
 					indir++;
@@ -977,30 +1099,26 @@ static void emit2(Node p)
 	} else {
 		switch (generic(p->op)) {
 		case ARG:
-			Args arg = (Args)allocate(sizeof(*arg), STMT), a = args_list;
-			arg->next = NULL;
 			k0 = p->kids[0];
 			while (k0 && !k0->x.inst) k0 = k0->kids[0];
 			if (k0) { //TODO: fix this (might be because printf is not declared in 8q.c)
 				emitasm(k0, k0->x.inst);
 				k0->x.emitted = 1;
-				arg->arg = k0->syms[2]->x.name;
-
-				while (a != NULL && a->next != NULL)
-					a = a->next;
-				if (a)
-					a->next = arg;
-				else
-					args_list = arg;
+				muappend(&arg_list, k0->syms[2]->x.name, STMT);
 			}
 			break;
 		case CALL:
-			printf("\t\tCALL <@%s_sig> @%s_ref ( ", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
-			while (args_list != NULL) {
-				print("%%%s ", args_list->arg);
-				args_list = args_list->next;
+			if (optype(p->op) == V)
+				printf("\t\t");
+			printf("CALL <@%s_sig> @%s_ref ( ", p->kids[0]->syms[0]->name, p->kids[0]->syms[0]->name);
+			while (arg_list != NULL) {
+				print("%%%s ", arg_list->elem);
+				arg_list = arg_list->next;
 			}
 			print(")\n");
+			break;
+		case LOAD:
+
 			break;
 		default:
 			print("//OP %d NOT RECOGNIZED\n", p->op);
@@ -1008,22 +1126,57 @@ static void emit2(Node p)
 		}
 	}
 
-	if(p->x.registered)
+	if (p->x.registered)
 		p->x.emitted = 1;
 }
 static void doarg(Node p) {}
 static void target(Node p) {}
 static void clobber(Node p) {}
 
-//helper funcs
+static MuNode muprepend(MuNode *headp, void* e, int scope) {
+	MuNode n = NEW0(n, scope), head = *headp;
+	if (head == NULL) {
+		head = n;
+		head->prev = head;
+	}
+
+	*headp = n;
+	n->next = head;
+	n->prev = head->prev;
+	head->prev = n;
+	n->elem = e;
+
+	return n;
+}
+static MuNode muappend(MuNode *headp, void* e, int scope) {
+	MuNode n = NEW0(n, scope), head = *headp;
+	if (head == NULL) {
+		head = n;
+		*headp = head;
+	} else {
+		//update old end of list
+		head->prev->next = n;
+	}
+
+	//put the new node at the end
+	n->prev = head->prev;
+	head->prev = n;
+
+	n->elem = e;
+	return n;
+}
+
 static int def_type(Type t, char *name, char *mu_t) {
-	Types ts = NULL, n = NULL;
+	MuNode mt_node = mutype_list;
+	MuType mt;
+	char printdef = 1;
 	if (isptr(t)) {
-		for (ts = types_head; ts; ts = ts->next) {
+		for (; mt_node; mt_node = mt_node->next) {
+			mt = ELEM(mt_node, MuType);
+			if (!isptr(mt->type)) continue;
+
 			Type ts_tmp, t_tmp;
-			n = ts;
-			if (!isptr(ts->type)) continue;
-			ts_tmp = ts->type;
+			ts_tmp = mt->type;
 			t_tmp = t;
 			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
@@ -1031,81 +1184,99 @@ static int def_type(Type t, char *name, char *mu_t) {
 			}
 			if (ts_tmp->u.sym == t_tmp->u.sym)
 				return -1;
+			if (mt->name == string(name))
+				printdef = 0;
 		}
 	} else {
-		for (ts = types_head; ts; ts = ts->next) {
-			n = ts;
-			if (ts->type->u.sym == t->u.sym)
+		for (; mt_node; mt_node = mt_node->next) {
+			mt = ELEM(mt_node, MuType);
+			if (mt->type->u.sym == t->u.sym)
 				return -1;
+			if (mt->name == string(name))
+				printdef = 0;
 		}
 	}
 
-	ts = n;
-	NEW0(n, PERM);
-	if (ts)
-		ts->next = n;
-	else
-		types_head = n;
-	n->name = stringf("%s", name);
-	n->type = t;
-	print(".typedef @%s = %s\n", n->name, mu_t);
+	muappend(&mutype_list, NEW0(mt, PERM), PERM);
+
+	mt->name = string(name);
+	mt->type = t;
+	if (printdef)
+		print(".typedef @%s = %s\n", mt->name, mu_t);
 	return 0;
 }
 
 static char *type_name(Type t) {
-	Types ts;
+	MuNode mtnode = mutype_list;
+	MuType mt;
 	Type ts_tmp, t_tmp;
 	if (isptr(t)) {
-		for (ts = types_head; ts; ts = ts->next) {
-			if (!isptr(ts->type)) continue;
-			ts_tmp = ts->type;
+		for (; mtnode; mtnode = mtnode->next) {
+			mt = ELEM(mtnode, MuType);
+			if (!isptr(mt->type)) continue;
+			ts_tmp = mt->type;
 			t_tmp = t;
 			while (isptr(ts_tmp) && isptr(t_tmp)) {
 				ts_tmp = ts_tmp->type;
 				t_tmp = t_tmp->type;
 			}
 			if (ts_tmp->u.sym == t_tmp->u.sym)
-				return ts->name;
+				return mt->name;
 		}
 		char *name = stringf("ptr_%s", type_name(t->type));
 		def_type(t, name, stringf("uptr<@%s>", type_name(t->type)));
 		return name;
 		assert(0);
 	} else if (isarray(t)) {
-		for (ts = types_head; ts; ts = ts->next)
-			if (ts->type->u.sym == t->u.sym)
-				return ts->name;
+		for (; mtnode; mtnode = mtnode->next)
+			if (ELEM(mtnode, MuType)->type->u.sym == t->u.sym)
+				return ELEM(mtnode, MuType)->name;
 		char *name = stringf("arr_%s_%d", type_name(t->type), t->size);
 		def_type(t, name, stringf("array< @%s %d >", type_name(t->type), t->size));
 		return name;
 		assert(0);
 	} else {
-		for (ts = types_head; ts; ts = ts->next)
-			if (ts->type->u.sym == t->u.sym)
-				return ts->name;
+		for (; mtnode; mtnode = mtnode->next)
+			if (ELEM(mtnode, MuType)->type->u.sym == t->u.sym)
+				return ELEM(mtnode, MuType)->name;
 		assert(0);
 	}
 	return NULL;
 }
 
 static char *const_name(Type t, char *val) {
-	char *tn = type_name(t), *v = string(val);
-	Consts c = consts_head, n;
-	for (c = consts_head; c; c = c->next) {
-		n = c;
-		if (c->type == t && c->val == v)
-			return c->name;
-	}
-	c = n;
-	NEW0(n, PERM);
-	if (consts_head)
-		c->next = n;
-	else
-		consts_head = n;
+	char *tmp = val, *tmp2 = val;
+	size_t idx = 0;
+	do {
+		char c = *tmp;
+		if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '.')
+			continue;
+		switch (c) {
+		case '-':
+			tmp2 = allocate(strlen(tmp2) + 3, STMT);
+			tmp2[idx++] = 'n';
+			tmp2[idx++] = 'e';
+			tmp2[idx] = 'g';
+			memcpy(tmp2 + idx + 1, tmp + 1, strlen(tmp));
+			tmp = tmp2;
+			break;
+		default:
+			*tmp = '.';
+			break;
+		}
+		idx++;
+	} while (*(++tmp) != 0);
+	char *tn = type_name(t), *v = string(tmp2);
+	MuNode mcnode = muconst_list;
+	Const c;
+	for (; mcnode; mcnode = mcnode->next)
+		if (ELEM(mcnode, Const)->type == t && ELEM(mcnode, Const)->val == v)
+			return ELEM(mcnode, Const)->name;
 
-	n->name = stringf("%s_%s", tn, v);
-	n->val = v;
-	n->type = t;
-	print(".const @%s <@%s> = %s\n", n->name, tn, v);
-	return n->name;
+	muappend(&muconst_list, NEW0(c, PERM), PERM);
+	c->name = stringf("%s_%s", tn, v);
+	c->val = v;
+	c->type = t;
+	print(".const @%s <@%s> = %s\n", c->name, tn, val);
+	return c->name;
 }

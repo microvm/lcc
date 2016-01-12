@@ -345,6 +345,7 @@ clean::		testclean
 		-del /q $Bdagcheck.c $Balpha.c $Bmips.c $Bx86.c $Bmu.c $Bsparc.c $Bx86linux.c
 		-del /q $Brcc1$E $Brcc1$E $B1rcc$E $B2rcc$E
 		-del /q $B*.ilk
+		-del /q *.i *.mir *_d.txt *tmp
 
 clobber::	clean
 		-del /q $Brcc$E $Blburg$E $Bcpp$E $Blcc$E $Bcp$E $Bbprint$E $Bops$E $Bsizes$E $Bctomd$E $B*$A

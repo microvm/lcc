@@ -3,7 +3,7 @@
 *.s
 *.s.json
 *_d.txt
-tmp
+*tmp
 
 #VS stuff
 Debug
