@@ -625,9 +625,6 @@ static void emit2(Node p)
 			}
 			print(")\n");
 			break;
-		case LOAD:
-
-			break;
 		default:
 			print("//OP %d NOT RECOGNIZED\n", p->op);
 			break;
