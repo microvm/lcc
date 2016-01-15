@@ -184,6 +184,36 @@ unsigned char NEG(void) {
 }
 
 unsigned short bops(void) {
+	int i = 1, resi;
+	unsigned int j = 2, resui;
+	long l = 3, resl;
+	unsigned long m = 4, resul;
+	
+	resi = ~i;
+	resui = ~j;
+	resi = i & resi;
+	resui = j & resui;
+	resi = i | resi;
+	resui = j | resui;
+	resi = i ^ resi;
+	resui = j ^ resui;
+	resi = i << 1;
+	resui = j << 1;
+	resi = i >> 1;
+	resui = j >> 1;
+
+	resl = ~l;
+	resul = ~m;
+	resl = l & resl;
+	resul = m & resul;
+	resl = l | resl;
+	resul = m | resul;
+	resl = l ^ resl;
+	resul = m ^ resul;
+	resl = l << 1;
+	resul = m << 1;
+	resl = l >> 1;
+	resul = m >> 1;
 
 	return 0;
 }
@@ -191,6 +221,22 @@ unsigned short bops(void) {
 unsigned int arith(void) {
 
 	return 0;
+}
+
+void ptrs(void) {
+	char *cp, ca[3] = { 0, 1, 2 };
+	short *sp, sa[3];
+	int *ip, ia[3];
+	long *lp, la[3];
+	float *fp, fa[3];
+	double *dp, da[3];
+	void *vp;
+	*cp = 'a';
+	*sp = 1;
+	*ip = -1;
+	*lp = 10;
+	*fp = 1.0;
+	*dp = -1.0;
 }
 
 int main(int argc, char *argv[]) {

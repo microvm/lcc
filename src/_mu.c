@@ -11,8 +11,7 @@
 #define NULL 0
 #endif
 
-#define ELEM(n,t) ((t)(n->elem))
-typedef char bool;
+#define ELEM(t,n) ((t)(n->elem))
 
 static void address(Symbol, Symbol, long);
 static void blkfetch(int, int, int, int);
@@ -38,7 +37,7 @@ static void target(Node);
 static Node mugen(Node);
 static Symbol rmap(int);
 
-//Doubly linked list, last node's next ptr is left null to avoid looping forever (head->prev is valid tho)
+//Doubly linked list, last node's next is left NULL to avoid looping forever (head->prev is valid tho)
 typedef struct munode {
 	void *elem;
 	struct munode *next, *prev;
@@ -47,16 +46,10 @@ static MuNode muprepend(MuNode*, void*, int);
 static MuNode muappend(MuNode*, void*, int);
 
 //Global types/vars
-//define a new mu type
-static int def_type(Type, char *, char *);
-//get mu name for type
-static char *type_name(Type);
-//get or create a const
-static char *const_name(Type, char *);
 //Maps an LCC type to a mutype
 typedef struct mutype {
 	Type type;
-	char *name;
+	char *name, *mutype;
 } *MuType;
 //Maps an LCC const to a mu const name
 typedef struct cnst {
@@ -65,9 +58,25 @@ typedef struct cnst {
 	char *val;
 } *Const;
 
-//elem is a MuType/Const
+typedef struct mufunc {
+	char *name;
+	MuNode param_types;
+	MuType ret;
+} *MuFunc;
+
+//define a new mu type
+static MuType def_type(Type, char *, char *);
+//Get MuType struct for type
+static MuType get_mutype(Type);
+//get mu name for type
+static char *type_name(Type);
+//get or create a const
+static char *const_name(Type, char *);
+
+//elem is a MuType/Const/MuFunc
 static MuNode mutype_list = NULL;
 static MuNode muconst_list = NULL;
+static MuNode func_list = NULL;
 
 static Symbol intreg[32], fltreg[32];
 static Symbol intregw, fltregw;
@@ -97,8 +106,11 @@ static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
 	outf = string(argv[argc - 1]);
+	freopen(stringf("%s.tmp", outf), "w", stdout);
 
-	print(".funcsig @void_func () -> ()\n\n");
+	MuFunc f;
+	muappend(&func_list, NEW0(f, PERM), PERM);
+	f->name = string("void");
 
 	def_type(voidtype, "void", "void");
 
@@ -113,16 +125,13 @@ static void progbeg(int argc, char *argv[])
 
 	def_type(longtype, "long", "int<64>");
 	def_type(unsignedlong, "ulong", "int<64>");
-	def_type(longlong, "long", "int<64>");
-	def_type(unsignedlonglong, "ulong", "int<64>");
 
 	def_type(floattype, "float", "float");
 	def_type(doubletype, "double", "double");
-	def_type(longdouble, "double", "double");
 
 	def_type(voidptype, "ptr_void", "uptr<@void>");
 	def_type(charptype, "ptr_char", "uptr<@char>");
-	def_type(funcptype, "ptr_func", "ufuncptr<@void_func>");
+	def_type(funcptype, "ptr_void_func", "ufuncptr<@void_func>");
 
 	print("\n");
 
@@ -150,27 +159,10 @@ static void progbeg(int argc, char *argv[])
 	vmask[0] = vmask[1] = 0;
 }
 
-int fcopy(char *src, char *dst) {
-	char buf[1024];
-	fflush(stdout);
-	FILE *srcf = fopen(src, "r"), *dstf = fopen(dst, "w");
-	if (ferror(srcf) || ferror(dstf)) {
-		fprintf(stderr, "I/O error");
-		exit(1);
-	}
-	while (fgets(buf, 1024, srcf) != NULL)
-		if (fputs(buf, dstf) == EOF)
-			break;
-	if ((!feof(srcf) && ferror(srcf)) || ferror(dstf))
-		fprintf(stderr, "I/O error");
-	fclose(srcf);
-	fclose(dstf);
-	return 0;
-}
 char *fgetl(char **buf, size_t *sz, FILE *f) {
 	size_t s = *sz;
 	char *res = fgets(*buf, s, f), *tmp;
-	while (res && (*buf)[strlen(*buf) - 1] != '\n') {
+	while (res && !ferror && (*buf)[strlen(*buf) - 1] != '\n') {
 		s *= 2;
 		tmp = allocate(s, PERM);
 		memcpy(tmp, *buf, s / 2);
@@ -178,6 +170,8 @@ char *fgetl(char **buf, size_t *sz, FILE *f) {
 		//buf + (s / 2) - 1 because we want to overwrite the trailing \0 char
 		res = fgets(*buf + (s / 2) - 1, s / 2 + 1, f);
 	}
+	if (ferror(f))
+		perror("I/O ERROR");
 	*sz = s;
 	return res;
 }
@@ -188,9 +182,8 @@ enum InstState
 	CALL_PARAMS = 4
 };
 static void progend(void) {
-	size_t bufsz = 128;
+	size_t bufsz = 256;
 	char *tmpf = stringf("%s.tmp", outf), *buf = allocate(bufsz, PERM);
-	fcopy(outf, tmpf);
 
 	FILE *srcf, *dstf;
 	if (ferror(srcf = fopen(tmpf, "r"))) {
@@ -200,15 +193,42 @@ static void progend(void) {
 		fclose(srcf);
 	}
 
+	do {
+		Const c = ELEM(Const, muconst_list);
+		fprintf(dstf, ".const @%s <@%s> = %s\n", c->name, type_name(c->type), c->val);
+	} while ((muconst_list = muconst_list->next) != NULL);
+	fputc('\n', dstf);
+
+	do {
+		MuFunc f = ELEM(MuFunc, func_list);
+		MuNode m = f->param_types;
+		MuType t;
+		fprintf(dstf, ".funcsig @%s_sig = (", f->name);
+		if (m) fputc(' ', dstf);
+		for (; m; m = m->next) {
+			t = ELEM(MuType, m);
+			fprintf(dstf, "@%s ", t->name);
+		}
+		fprint(dstf, ") -> (");
+		if (f->ret) fprintf(dstf, " @%s ", f->ret->name);
+		fprint(dstf, ")\n");
+		fprintf(dstf, ".typedef @%s_ref = funcref<@%s_sig>\n", f->name, f->name);
+	} while ((func_list = func_list->next) != NULL);
+	fputc('\n', dstf);
+
+	do {
+		MuType t = ELEM(MuType, mutype_list);
+		fprintf(dstf, ".typedef @%s = %s\n", t->name, t->mutype);
+	} while ((mutype_list = mutype_list->next) != NULL);
+
 	//the following state needs to persist between lines
-	size_t inst_state = 0, depth = 0;
 	MuInst inst;
-	muappend(&inst_list, NEW0(inst,PERM), PERM);
+	size_t inst_state = 0, depth = 0;
+	muappend(&inst_list, NEW0(inst, PERM), PERM);
 	while (fgetl(&buf, &bufsz, srcf) != NULL) {
 		//ignore trailing newline
 		int len = strlen(buf) - 1;
-
-		if (len && buf[len - 1] == ')' && strncmp(buf, ".funcsig", 8)) {
+		if (len && buf[len - 1] == ')') {
 			size_t inst_buf_idx = strlen(inst->inst), uinst_buf_idx;
 			for (size_t i = 0; i < len; i++) {
 				char c = buf[i];
@@ -255,8 +275,9 @@ static void progend(void) {
 			if (!depth) {
 				do {
 					fputs("\t\t", dstf);
-					fputs(ELEM(inst_list,MuInst)->inst, dstf);
-					fputc('\n', dstf);
+					fputs(ELEM(MuInst, inst_list)->inst, dstf);
+					if (inst_list->next)
+						fputc('\n', dstf);
 				} while ((inst_list = inst_list->next) != NULL);
 
 				muappend(&inst_list, NEW0(inst, PERM), PERM);
@@ -315,21 +336,22 @@ static void defconst(int suffix, int size, Value v)
 		break;
 	}
 	if (cn && exporting) {
-		printf("%%%s = @%s\n\n", exporting, cn);
+		printf("@%s = @%s\n\n", exporting, cn);
 		exporting = NULL;
 	}
 }
+//TODO: use HAIL
 static void defstring(int n, char *str)
 {
-	for (size_t i = 0; i < n; i++)
-		const_name(chartype, stringf("%d", str[i]));
-	print("\n");
-	Type t = array(chartype, n, 1);
-	char *type = type_name(t), *name = g->x.name;
-	print("@%s = NEW <@%s>\n", name, type);
-	print("@%s_iref0 = GETIREF <@%s> @%s\n", name, type, name);
-	for (size_t i = 0; i < n; i++)
-		print("STORE <@%s> @%s_iref%d @%s\n@%s_iref%d = SHIFTIREF <@%s @%s> @%s_iref%d @%s\n", type_name(chartype), name, i, const_name(chartype, stringf("%d", str[i])), name, i + 1, type, type_name(longtype), name, i, const_name(longtype, "1"), const_name(chartype, stringf("%d", str[i])));
+	//for (size_t i = 0; i < n; i++)
+	//	const_name(chartype, stringf("%d", str[i]));
+	//print("\n");
+	//Type t = array(chartype, n, 1);
+	//char *type = type_name(t), *name = g->x.name;
+	//print("@%s = NEW <@%s>\n", name, type);
+	//print("@%s_iref0 = GETIREF <@%s> @%s\n", name, type, name);
+	//for (size_t i = 0; i < n; i++)
+	//	print("STORE <@%s> @%s_iref%d @%s\n@%s_iref%d = SHIFTIREF <@%s @%s> @%s_iref%d @%s\n", type_name(chartype), name, i, const_name(chartype, stringf("%d", str[i])), name, i + 1, type, type_name(longtype), name, i, const_name(longtype, "1"), const_name(chartype, stringf("%d", str[i])));
 }
 static void defsymbol(Symbol p)
 {
@@ -358,15 +380,16 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 
 	usedmask[0] = usedmask[1] = 0;
 	freemask[0] = freemask[1] = ~(unsigned)0;
-	for (size_t i = 0; caller[i]; i++)
-		type_name(caller[i]->type);
-	for (size_t i = 0; callee[i]; i++)
-		type_name(callee[i]->type);
-	print("\n.funcsig @%s_sig = ( ", f->name);
-	for (size_t i = 0; callee[i]; i++)
-		print("@%s ", type_name(caller[i]->type));
-	print(") -> ( @%s )\n", type_name(f->type->type));
-	print(".typedef @%s_ref = funcref<@%s_sig>\n", f->name, f->name);
+
+	MuFunc mf;
+	MuType mt;
+	muappend(&func_list, NEW0(mf, PERM), PERM);
+	mf->name = string(f->name);
+	mf->ret = get_mutype(f->type->type);
+	for (size_t i = 0; callee[i]; i++) {
+		muappend(&(mf->param_types), get_mutype(caller[i]->type), PERM);
+	}
+
 	print(".funcdef @%s VERSION %%v1 <@%s_sig> {\n", f->name, f->name);
 	print("\t%%entry( ");
 	for (size_t i = 0; callee[i]; i++)
@@ -423,6 +446,7 @@ static void mugen_cond(Node p) {
 		p->syms[1] = newtemp(AUTO, optype(p->op), opsize(p->op));
 		p->syms[1]->x.name = stringf("cond_%s", p->syms[1]->name);
 		p->syms[2] = findlabel(genlabel(1));
+		//TODO: this is probably what is messing up multi-condition ifs :(
 		p->link = newnode(LABEL + V, NULL, NULL, p->syms[2]);
 	}
 	mugen_cond(p->kids[0]);
@@ -436,6 +460,7 @@ static void mugen_cond(Node p) {
 */
 static void mugen_fasgn(Node p, Node *forest) {
 	if (generic(p->op) != CALL || optype(p->op) == V) return;
+
 	int type = optype(p->op), sz = opsize(p->op);
 	Symbol s = newtemp(AUTO, type, sz), ssz = intconst(sz);
 	s->x.name = stringf("%s_tmp", s->name);
@@ -460,13 +485,20 @@ static void mugen_var(Node p, int child) {
 	if (p == NULL)
 		return;
 	if (p->x.inst && child) {
-		//should have a register allocated to it
+		//should have a "register" allocated to it
 		assert(p->syms[2]);
 		p->syms[2] = newtemp(AUTO, optype(p->op), opsize(p->op));
-		p->syms[2]->x.name = stringf("var_%s", p->syms[2]->name);
+		p->syms[2]->x.name = stringf("var_%s.%d", p->syms[2]->name, p->syms[2]->scope - LOCAL);
 	}
 	mugen_var(p->kids[0], child + 1);
 	mugen_var(p->kids[1], child + 1);
+}
+
+static void mugen_walk(Node n) {
+	if (n == NULL)
+		return;
+	mugen_walk(n->kids[0]);
+	mugen_walk(n->kids[1]);
 }
 
 /*
@@ -579,7 +611,6 @@ static void emit2(Node p)
 			break;
 		case INDIR:
 			k0 = p->kids[0];
-			print("\t\t%%%s = LOAD PTR <@", p->syms[2]->x.name);
 			short indir = 0;
 			while (k0->kids[0]) {
 				if (generic(k0->op) == INDIR)
@@ -595,7 +626,7 @@ static void emit2(Node p)
 			else
 				for (size_t i = 0; i <= indir; i++)
 					t = t + 4;
-			print("%s> %%", t);
+			print("\t\t%%%s = LOAD PTR <@%s> ", p->syms[2]->x.name, t);
 			nts = _nts[_rule(p->x.state, p->x.inst)];
 			emitasm(p->kids[0], nts[0]);
 			print("\n");
@@ -671,117 +702,100 @@ static MuNode muappend(MuNode *headp, void* e, int scope) {
 	return n;
 }
 
-static int def_type(Type t, char *name, char *mu_t) {
+static MuType def_type(Type t, char *name, char *mu_t) {
 	MuNode mt_node = mutype_list;
 	MuType mt;
-	char printdef = 1;
-	if (isptr(t)) {
-		for (; mt_node; mt_node = mt_node->next) {
-			mt = ELEM(mt_node, MuType);
+	for (; mt_node; mt_node = mt_node->next) {
+		mt = ELEM(MuType, mt_node);
+		if (isptr(t)) {
 			if (!isptr(mt->type)) continue;
 
-			Type ts_tmp, t_tmp;
-			ts_tmp = mt->type;
+			Type mt_tmp, t_tmp;
+			mt_tmp = mt->type;
 			t_tmp = t;
-			while (isptr(ts_tmp) && isptr(t_tmp)) {
-				ts_tmp = ts_tmp->type;
+			//check to see if the number of levels of indirection and the base types are the same
+			while (isptr(mt_tmp) && isptr(t_tmp)) {
+				mt_tmp = mt_tmp->type;
 				t_tmp = t_tmp->type;
 			}
-			if (ts_tmp->u.sym == t_tmp->u.sym)
-				return -1;
-			if (mt->name == string(name))
-				printdef = 0;
-		}
-	} else {
-		for (; mt_node; mt_node = mt_node->next) {
-			mt = ELEM(mt_node, MuType);
-			if (mt->type->u.sym == t->u.sym)
-				return -1;
-			if (mt->name == string(name))
-				printdef = 0;
-		}
+			if (mt_tmp->u.sym == t_tmp->u.sym)
+				return mt;
+		} else if (mt->type->u.sym == t->u.sym)
+			return mt;
 	}
 
 	muappend(&mutype_list, NEW0(mt, PERM), PERM);
 
-	mt->name = string(name);
 	mt->type = t;
-	if (printdef)
-		print(".typedef @%s = %s\n", mt->name, mu_t);
-	return 0;
+	mt->name = string(name);
+	mt->mutype = string(mu_t);
+	return mt;
+}
+
+static MuType get_mutype(Type t) {
+	MuNode mtnode = mutype_list;
+	MuType mt;
+	Type mt_tmp, t_tmp;
+	if (isptr(t)) {
+		for (; mtnode; mtnode = mtnode->next) {
+			mt = ELEM(MuType, mtnode);
+			if (!isptr(mt->type)) continue;
+			mt_tmp = mt->type;
+			t_tmp = t;
+			while (isptr(mt_tmp) && isptr(t_tmp)) {
+				mt_tmp = mt_tmp->type;
+				t_tmp = t_tmp->type;
+			}
+			if (mt_tmp->u.sym == t_tmp->u.sym)
+				return mt;
+		}
+		return def_type(t, stringf("ptr_%s", type_name(t->type)), stringf("uptr<@%s>", type_name(t->type)));
+	} else if (isarray(t)) {
+		for (; mtnode; mtnode = mtnode->next)
+			if (ELEM(MuType, mtnode)->type->u.sym == t->u.sym)
+				return ELEM(MuType, mtnode);
+		return def_type(t, stringf("arr_%s_%d", type_name(t->type), t->size), stringf("array< @%s %d >", type_name(t->type), t->size));
+	} else {
+		for (; mtnode; mtnode = mtnode->next)
+			if (ELEM(MuType, mtnode)->type->u.sym == t->u.sym)
+				return ELEM(MuType, mtnode);
+		assert(0); //base type that hasn't been defined so...
+	}
+	return NULL;
 }
 
 static char *type_name(Type t) {
-	MuNode mtnode = mutype_list;
-	MuType mt;
-	Type ts_tmp, t_tmp;
-	if (isptr(t)) {
-		for (; mtnode; mtnode = mtnode->next) {
-			mt = ELEM(mtnode, MuType);
-			if (!isptr(mt->type)) continue;
-			ts_tmp = mt->type;
-			t_tmp = t;
-			while (isptr(ts_tmp) && isptr(t_tmp)) {
-				ts_tmp = ts_tmp->type;
-				t_tmp = t_tmp->type;
-			}
-			if (ts_tmp->u.sym == t_tmp->u.sym)
-				return mt->name;
-		}
-		char *name = stringf("ptr_%s", type_name(t->type));
-		def_type(t, name, stringf("uptr<@%s>", type_name(t->type)));
-		return name;
-		assert(0);
-	} else if (isarray(t)) {
-		for (; mtnode; mtnode = mtnode->next)
-			if (ELEM(mtnode, MuType)->type->u.sym == t->u.sym)
-				return ELEM(mtnode, MuType)->name;
-		char *name = stringf("arr_%s_%d", type_name(t->type), t->size);
-		def_type(t, name, stringf("array< @%s %d >", type_name(t->type), t->size));
-		return name;
-		assert(0);
-	} else {
-		for (; mtnode; mtnode = mtnode->next)
-			if (ELEM(mtnode, MuType)->type->u.sym == t->u.sym)
-				return ELEM(mtnode, MuType)->name;
-		assert(0);
-	}
+	if (t == longlong)
+		t = longtype;
+	else if (t == unsignedlonglong)
+		t = unsignedlong;
+	else if (t == longdouble)
+		t = doubletype;
+
+	MuType mt = get_mutype(t);
+	if (mt)
+		return mt->name;
 	return NULL;
 }
 
 static char *const_name(Type t, char *val) {
 	char *tmp = val, *tmp2 = val;
-	size_t idx = 0;
 	do {
 		char c = *tmp;
-		if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '.')
+		if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '.' || c == '-')
 			continue;
-		switch (c) {
-		case '-':
-			tmp2 = allocate(strlen(tmp2) + 3, STMT);
-			tmp2[idx++] = 'n';
-			tmp2[idx++] = 'e';
-			tmp2[idx] = 'g';
-			memcpy(tmp2 + idx + 1, tmp + 1, strlen(tmp));
-			tmp = tmp2;
-			break;
-		default:
-			*tmp = '.';
-			break;
-		}
-		idx++;
+		*tmp = '.';
 	} while (*(++tmp) != 0);
 	char *tn = type_name(t), *v = string(tmp2);
 	MuNode mcnode = muconst_list;
 	Const c;
 	for (; mcnode; mcnode = mcnode->next)
-		if (ELEM(mcnode, Const)->type == t && ELEM(mcnode, Const)->val == v)
-			return ELEM(mcnode, Const)->name;
+		if (ELEM(Const, mcnode)->type == t && ELEM(Const, mcnode)->val == v)
+			return ELEM(Const, mcnode)->name;
 
 	muappend(&muconst_list, NEW0(c, PERM), PERM);
 	c->name = stringf("%s_%s", tn, v);
 	c->val = v;
 	c->type = t;
-	print(".const @%s <@%s> = %s\n", c->name, tn, val);
 	return c->name;
 }
