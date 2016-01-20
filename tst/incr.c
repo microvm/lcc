@@ -1,6 +1,6 @@
-void main(void) {}
+main() {}
 
-void memchar(void) {
+memchar() {
 	char x, *p;
 
 	&x, &p;
@@ -10,7 +10,7 @@ void memchar(void) {
 	x = *--p;
 }
 
-void memint(void) {
+memint() {
 	int x, *p;
 
 	&x, &p;
@@ -20,7 +20,7 @@ void memint(void) {
 	x = *--p;
 }
 
-void regchar(void) {
+regchar() {
 	register char x, *p;
 
 	x = *p++;
@@ -29,7 +29,7 @@ void regchar(void) {
 	x = *--p;
 }
 
-void regint(void) {
+regint() {
 	register int x, *p;
 
 	x = *p++;
