@@ -56,7 +56,6 @@ RCCOBJS=$Balloc$O \
 	$Btypes$O \
 	$Bnull$O \
 	$Bsymbolic$O \
-	$Bjson$O \
 	$Bgen$O \
 	$Bbytecode$O \
 	$Balpha$O \
@@ -99,7 +98,6 @@ $Bstmt$O:	src/stmt.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/stmt.c
 $Bstring$O:	src/string.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/string.c
 $Bsym$O:	src/sym.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/sym.c
 $Bsymbolic$O:	src/symbolic.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/symbolic.c
-$Bjson$O:	src/json.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/json.c
 $Bbytecode$O:	src/bytecode.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/bytecode.c
 $Btrace$O:	src/trace.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/trace.c
 $Btree$O:	src/tree.c;	$(CC) $(CFLAGS) -c -Isrc -Fo$@ src/tree.c
@@ -377,7 +375,6 @@ RCCSRCS=src/alloc.c \
 	src/types.c \
 	src/null.c \
 	src/symbolic.c \
-	src/json.c \
 	src/bytecode.c \
 	src/gen.c \
 	src/stab.c \

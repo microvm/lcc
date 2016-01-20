@@ -134,7 +134,6 @@
     <ClCompile Include="src\init.c" />
     <ClCompile Include="src\inits.c" />
     <ClCompile Include="src\input.c" />
-    <ClCompile Include="src\json.c" />
     <ClCompile Include="src\lex.c" />
     <ClCompile Include="src\list.c" />
     <ClCompile Include="src\main.c" />
@@ -153,7 +152,6 @@
     <ClCompile Include="src\trace.c" />
     <ClCompile Include="src\tree.c" />
     <ClCompile Include="src\types.c" />
-    <ClCompile Include="tst\8q-levi.c" />
     <ClCompile Include="tst\8q.c" />
     <ClCompile Include="tst\array.c" />
     <ClCompile Include="tst\cf.c" />

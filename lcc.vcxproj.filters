@@ -123,9 +123,6 @@
     <ClCompile Include="src\input.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\json.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\lex.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -172,9 +169,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\types.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tst\8q-levi.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="tst\8q.c">

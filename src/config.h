@@ -62,7 +62,6 @@ typedef struct {
 	Node prev, next;
 	Node prevuse;
 	short argno;
-	unsigned int num;
 } Xnode;
 typedef struct {
 	Symbol vbl;
@@ -72,8 +71,6 @@ typedef struct {
 } *Regnode;
 enum { IREG=0, FREG=1 };
 typedef struct {
-	unsigned printed:1;
-	unsigned caller:1;
 	char *name;
 	unsigned int eaddr;  /* omit */
 	int offset;
