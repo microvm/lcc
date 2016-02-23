@@ -398,7 +398,7 @@ $B2rcc$E:	$B1rcc$E
 tests:
 	$Blcc -A -E tst\8q.c > 8q.i
 	$Blcc -A -E tst\incr.c > incr.i
-	$Blcc -A -E tst\timm.c > timm.i
+	$Blcc -A -E timm.c > timm.i
 
 mutest: all
 	$Brcc -target=mu -d -g9,// 8q.i   8q.mir   2> 8q_d.txt

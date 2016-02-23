@@ -421,20 +421,6 @@ static void prelabel(Node p) {
 	prelabel(p->kids[1]);
 	if (NeedsReg[opindex(p->op)])
 		setreg(p, (*IR->x.rmap)(opkind(p->op)));
-	switch (generic(p->op)) {
-	case ADDRF: case ADDRL:
-		if (p->syms[0]->sclass == REGISTER)
-			p->op = VREG+P;
-		break;
-	case INDIR:
-		if (p->kids[0]->op == VREG+P)
-			setreg(p, p->kids[0]->syms[0]);
-		break;
-	case ASGN:
-		if (p->kids[0]->op == VREG+P)
-			rtarget(p, 1, p->kids[0]->syms[0]);
-		break;
-	}
 	(IR->x.target)(p);
 }
 void setreg(Node p, Symbol r) {

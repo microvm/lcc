@@ -63,36 +63,36 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
     <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR="$(Configuration)\\";$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
     <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;_DEBUG;LCCDIR="$(Configuration)\\";$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
     <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;LCCDIR="$(Configuration)\\";NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" all</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" all</NMakeBuildCommandLine>
     <NMakeOutput>
     </NMakeOutput>
     <NMakeCleanCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clean</NMakeCleanCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;LCCDIR="$(Configuration)\\";NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>nmake /NOLOGO BUILDDIR="$(Configuration)" LCCDIR="$(Configuration)" clobber all</NMakeReBuildCommandLine>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="cpp\cpp.c" />
@@ -120,6 +120,7 @@
     <ClCompile Include="lib\assert.c" />
     <ClCompile Include="lib\bbexit.c" />
     <ClCompile Include="lib\yynull.c" />
+    <ClCompile Include="Release\mu.c" />
     <ClCompile Include="src\alloc.c" />
     <ClCompile Include="src\bind.c" />
     <ClCompile Include="src\bytecode.c" />
@@ -168,7 +169,7 @@
     <ClCompile Include="tst\stdarg.c" />
     <ClCompile Include="tst\struct.c" />
     <ClCompile Include="tst\switch.c" />
-    <ClCompile Include="tst\timm.c" />
+    <ClCompile Include="timm.c" />
     <ClCompile Include="tst\wf1.c" />
     <ClCompile Include="tst\yacc.c" />
   </ItemGroup>
@@ -245,6 +246,7 @@
     <ClInclude Include="src\ops.h" />
     <ClInclude Include="src\stab.h" />
     <ClInclude Include="src\token.h" />
+    <ClInclude Include="timm.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="doc\install.html" />

@@ -219,9 +219,6 @@
     <ClCompile Include="tst\switch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="tst\timm.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="tst\wf1.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -234,13 +231,19 @@
     <ClCompile Include="src\_mu.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Debug\mu.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\c_to_md.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="lburg\gram.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="timm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Release\mu.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Debug\mu.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -459,6 +462,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\token.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="timm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
