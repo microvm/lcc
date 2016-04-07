@@ -12,19 +12,104 @@
 #define NULL 0
 #endif
 
+/// Get the element pointed to by n as an object of type t.
 #define ELEM(t,n) ((t)(n->elem))
 
+/// Get `sym->name` as a variable name.
+/*!
+Prepends an @ onto global symbol names and a % onto local symbol names.
+\sa XNAME
+*/
 #define NAME(sym) (sym->scope == GLOBAL ? stringf("@%s", sym->name) : stringf("%%%s", sym->name))
+/// Get `sym->x.name` as a variable name.
+/*!
+Prepends an @ onto global symbol names and a % onto local symbol names.
+\sa NAME
+*/
 #define XNAME(sym) (sym->scope == GLOBAL ? stringf("@%s", sym->x.name) : stringf("%%%s", sym->x.name))
 
+/// Check if op takes the address of a variable.
 #define isaddr(op) (generic(op) == ADDRF || generic(op) == ADDRG || generic(op) == ADDRL)
 
+/// Dereference t.
+#define indir(t) (unqual(t)->type)
+
+/// Print out a TODO comment
 #define todo(str, ...) printf("//%s:%d(TODO): " str "\n", __FILE__, __LINE__, __VA_ARGS__)
+/// Print out a PANIC comment
 #define panic(str, ...) printf("//%s:%d(PANIC): " str "\n", __FILE__, __LINE__, __VA_ARGS__)
 
-typedef char bool;
-enum { false, true };
+/// C doesn't have bool so we define it here
+typedef enum { false /*! the false value */, true /*! the true value */ } bool_t;
 
+typedef struct muconst * MuConst;
+typedef struct munode * MuNode;
+typedef struct muinst * MuInst;
+typedef struct mutype * MuType;
+typedef struct mufunc * MuFunc;
+typedef struct muglobal * MuGlobal;
+
+///Doubly linked list node
+/*!
+	The last node in the list has `next` left NULL to make looping through the list once easier.
+*/
+struct munode {
+	void *elem; ///< Element pointed to by this node
+	MuNode next; ///< Next node in the list
+	MuNode prev; ///< Previous node in the list
+};
+
+///Contains a Mu IR insruction stored as a string
+/*!
+	Used by progend()
+*/
+struct muinst {
+	char inst[1024]; ///< Mu IR instruction
+	MuInst parent; ///< ::muinst that uses the result of this instuction as input
+};
+
+///Maps a ::Type to a Mu IR type
+struct mutype {
+	Type type; ///< ::Type being mapped
+	char *name; ///< Mu IR type name
+	char *mutype; ///< Mu IR type definition
+};
+
+///Maps an LCC const to a Mu const variable
+struct muconst {
+	Type type; ///< ::Type of the const
+	char *name; ///< Mu variable name
+	char *val; ///< Value of the constant
+};
+
+///Represents a method defined or used in the program
+struct mufunc {
+	char *name; ///< Name of the function
+	MuNode param_types; ///< Head of the list of parameters. munode::elem is a ::Symbol
+	MuType ret; ///< Return type of the function
+	bool_t import; ///< `true` if this function needs to be imported
+};
+
+///Represents a .global definition
+/*!
+	If muglobal::s has a scalar ::Type (including ptrs) then muglobal::init_list is a single node with munode::elem pointing
+	to an initialization value. However, because of how LCC works, we do not believe this case is possible.
+
+	If muglobal::s has an array ::Type of size `n` then muglobal::init_list is a list of `m <= n` elements
+	to intialize the first `m` elements of the array. All munode::elem point to the same element type.
+
+	If muglobal::s has a struct ::Type with `n` fields then muglobal::init_list is a list of `m <= n` elements
+	to intialize the first `m` fields of the struct. The type of each munode::elem depends on the struct field type.
+*/
+struct muglobal {
+	Symbol s; ///< Global symbol to define
+	MuNode init_list; ///< Head of the list of elements to initialize muglobal::s with
+};
+
+/*!
+\defgroup lcc Methods called directly by LCC
+@{
+*/
 static void address(Symbol, Symbol, long);
 static void blkfetch(int, int, int, int);
 static void blkloop(int, int, int, int, int, int[]);
@@ -48,90 +133,74 @@ static void space(int);
 static void target(Node);
 static Node mugen(Node);
 static Symbol rmap(int);
+/// @}
 
-static bool types_are_equal(Type, Type);
-static void print_fields(Symbol);
+/*!
+\defgroup util Utility Methods
+@{
+*/
 
-//Doubly linked list, last node's next is left NULL to avoid looping forever (head->prev is valid tho)
-typedef struct munode {
-	void *elem;
-	struct munode *next, *prev;
-} *MuNode;
+static char *const_name(Type, char *);
+static char *type_name(Type);
+
+static MuType def_type_partial(Type, const char *);
+static MuType def_type(Type, const char *, const char *);
+static bool_t def_func(char*, Type, bool_t);
+
 static MuNode muprepend(MuNode*, void*, int);
 static MuNode muappend(MuNode*, void*, int);
 
-//Global types/vars
-//Maps an LCC type to a mutype
-typedef struct mutype {
-	Type type;
-	char *name, *mutype;
-} *MuType;
-//Maps an LCC const to a mu const name
-typedef struct cnst {
-	Type type;
-	char *name, *val;
-} *Const;
+static bool_t types_are_equal(Type, Type);
 
-typedef struct mufunc {
-	char *name;
-	MuNode param_types;
-	MuType ret;
-	bool import;
-} *MuFunc;
+static void print_fields(Symbol);
 
-typedef struct muglobal {
-	Symbol s;
-	MuNode init_list;
-} *MuGlobal;
-
-/*define a new mu type's name and LCC type, but not it's mu type definition (effectively a typedef)
-	MuTypes with NULL mutype are not emited
-*/
-static MuType def_type_partial(Type, const char *);
-//define a new mu type
-static MuType def_type(Type, const char *, const char *);
-//returns true on success, false on failure
-static bool def_func(char*, Type, bool);
-//Get MuType struct for type
 static MuType get_mutype(Type);
-//get mu name for type
-static char *type_name(Type);
-//get or create a const
-static char *const_name(Type, char *);
+static Type node_type(Node, bool_t);
+///@}
 
-static Type node_type(Node);
-
-//elem is a MuType/Const/MuFunc/char */muglobal
+/*!
+\defgroup glists Global Lists
+@{
+*/
+/// munode::elem points to a ::MuType
+/*! This list stores a ::mutype for each ::Type used/declared in the program. */
 static MuNode mutype_list = NULL;
+/// munode::elem points to a ::muconst
+/*! This list is used to store a ::muconst for each literal (int, float, ptr literal) used in the program. */
 static MuNode muconst_list = NULL;
+/// munode::elem points to a ::mufunc
+/*! This list is used to store a ::mufunc for each method used/declared in the program. */
 static MuNode func_list = NULL;
+/// munode::elem points to a char * holding a Mu IR instruction
+/*! This list is used to store instructions that are pre-processed by Mu (right now this just includes the .sizeof operator). */
 static MuNode preproc_list = NULL;
+/// munode::elem points to a ::muglobal
+/*! This list is used to store a ::muglobal for each LCC global. Each global is declared in the main file and initialized in a HAIL file. */
 static MuNode muglobal_list = NULL;
+/// munode::elem points to a char * holding a Mu IR instruction
+/*! This list is used to store instructions that unpin all variables that were pinned in a method. */
+static MuNode unpin_insts = NULL;
+///@}
 
 static Symbol intreg[32], fltreg[32];
 static Symbol intregw, fltregw;
 
+/// Used to store the original name of the out file
+/*! Since we redirect stdout we need to keep the name of the file we should eventually output to. */
 char *outf;
 
-//Stmt types/vars
-typedef struct muinst {
-	char inst[1024];
-	struct muinst *parent;
-} *MuInst;
-
-//elem is a char*
+/// munode::elem points to a char * holding a Mu variable name
+/*! This list is used to store variables that are passed as args to the next CALL instruction. The list is cleared by every CALL instruction. */
 static MuNode arg_list = NULL;
-//elem is MuInst
+/// munode::elem points to a ::muinst
+/*! This list is used in ::progend to store instructions from the current line being processed. */
 static MuNode inst_list = NULL;
 
-static Symbol g;
+///The name of the exported variable being initialized
 char *exporting = NULL;
 
-bool initializing_global = false;
-
-//rule cost fuctions
-static int asgn_simple_cost(Node);
-static int asgn_store_cost(Node);
+///Are we initializing a global?
+bool_t initializing_global = false;
 //%TOP_END
 %}
 
@@ -269,59 +338,41 @@ static int asgn_store_cost(Node);
 %term LOADU1=1254 LOADU2=2278 LOADU4=4326 LOADU8=8422
 %%
 stmt:	ARGB(mem)                     "#\n"
+stmt:	ARGI4(ival)                   "#\n"
+stmt:	ARGU4(ival)                   "#\n"
+stmt:	ARGI8(lval)                   "#\n"
+stmt:	ARGU8(lval)                   "#\n"
+stmt:	ARGP8(pval)                   "#\n"
+stmt:	ARGP8(addr)                   "#\n"
 stmt:	ARGF4(fval)                   "#\n"
 stmt:	ARGF8(dval)                   "#\n"
-stmt:	ARGI4(ival)                   "#\n"
-stmt:	ARGI8(lval)                   "#\n"
-stmt:	ARGP8(pval)                   "#\n"
-stmt:	ARGU4(ival)                   "#\n"
-stmt:	ARGU8(lval)                   "#\n"
-
-stmt:	ARGF4(addr)                   "#\n"
-stmt:	ARGF8(addr)                   "#\n"
-stmt:	ARGI4(addr)                   "#\n"
-stmt:	ARGI8(addr)                   "#\n"
-stmt:	ARGP8(addr)                   "#\n"
-stmt:	ARGU4(addr)                   "#\n"
-stmt:	ARGU8(addr)                   "#\n"
 
 stmt:	ASGNB(addr, mem)              "#\n"
 stmt:	ASGNP8(addr, pval)            "#%0 = PTRCAST <@typeof_1 @typeof_0> %1\n"
-stmt:	ASGNP8(addr, addr)            "#%c = COMMINST @uvm.native.pin <@typeof_0> %0\n%1 = PTRCAST <@typeof_c @typeof_1> %c\n"
-stmt:	ASGNI1(addr, cval)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNU1(addr, cval)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNI2(addr, sval)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNU2(addr, sval)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNI4(addr, ival)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNU4(addr, ival)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNI8(addr, lval)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNU8(addr, lval)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNF4(addr, fval)            "\t\t%0 = %1\n" asgn_cost(a)
-stmt:	ASGNF8(addr, dval)            "\t\t%0 = %1\n" asgn_cost(a)
-
-stmt:	ASGNI1(addr, cval)            "\t\tSTORE <@char> %0 %1\n" 1
-stmt:	ASGNU1(addr, cval)            "\t\tSTORE <@uchar> %0 %1\n" 1
-stmt:	ASGNI2(addr, sval)            "\t\tSTORE <@short> %0 %1\n" 1
-stmt:	ASGNU2(addr, sval)            "\t\tSTORE <@ushort> %0 %1\n" 1
-stmt:	ASGNI4(addr, ival)            "\t\tSTORE <@int> %0 %1\n" 1
-stmt:	ASGNU4(addr, ival)            "\t\tSTORE <@uint> %0 %1\n" 1
-stmt:	ASGNI8(addr, lval)            "\t\tSTORE <@long> %0 %1\n" 1
-stmt:	ASGNU8(addr, lval)            "\t\tSTORE <@ulong> %0 %1\n" 1
-stmt:	ASGNF4(addr, fval)            "\t\tSTORE <@float> %0 %1\n" 1
-stmt:	ASGNF8(addr, dval)            "\t\tSTORE <@double> %0 %1\n" 1
+stmt:	ASGNP8(addr, addr)            "#%c = COMMINST @uvm.native.pin <@typeof_0> %0_ref\n%1 = PTRCAST <@typeof_c @typeof_1> %c\n"
+stmt:	ASGNI1(addr, cval)            "\t\tSTORE PTR <@char> %0 %1\n"
+stmt:	ASGNU1(addr, cval)            "\t\tSTORE PTR <@uchar> %0 %1\n"
+stmt:	ASGNI2(addr, sval)            "\t\tSTORE PTR <@short> %0 %1\n"
+stmt:	ASGNU2(addr, sval)            "\t\tSTORE PTR <@ushort> %0 %1\n"
+stmt:	ASGNI4(addr, ival)            "\t\tSTORE PTR <@int> %0 %1\n"
+stmt:	ASGNU4(addr, ival)            "\t\tSTORE PTR <@uint> %0 %1\n"
+stmt:	ASGNI8(addr, lval)            "\t\tSTORE PTR <@long> %0 %1\n"
+stmt:	ASGNU8(addr, lval)            "\t\tSTORE PTR <@ulong> %0 %1\n"
+stmt:	ASGNF4(addr, fval)            "\t\tSTORE PTR <@float> %0 %1\n"
+stmt:	ASGNF8(addr, dval)            "\t\tSTORE PTR <@double> %0 %1\n"
 
 stmt:	ASGNP8(pval, pval)            "#%0 = PTRCAST <@typeof_1 @typeof_0> %1\n"
-stmt:	ASGNP8(pval, addr)            "#%c = COMMINST @uvm.native.pin <@typeof_0> %0\n%1 = PTRCAST <@typeof_c @typeof_1> %c\n"
-stmt:	ASGNI1(pval, cval)            "\t\tSTORE <@char> %0 %1\n"
-stmt:	ASGNU1(pval, cval)            "\t\tSTORE <@uchar> %0 %1\n"
-stmt:	ASGNI2(pval, sval)            "\t\tSTORE <@short> %0 %1\n"
-stmt:	ASGNU2(pval, sval)            "\t\tSTORE <@ushort> %0 %1\n"
-stmt:	ASGNI4(pval, ival)            "\t\tSTORE <@int> %0 %1\n"
-stmt:	ASGNU4(pval, ival)            "\t\tSTORE <@uint> %0 %1\n"
-stmt:	ASGNI8(pval, lval)            "\t\tSTORE <@long> %0 %1\n"
-stmt:	ASGNU8(pval, lval)            "\t\tSTORE <@ulong> %0 %1\n"
-stmt:	ASGNF4(pval, fval)            "\t\tSTORE <@float> %0 %1\n"
-stmt:	ASGNF8(pval, dval)            "\t\tSTORE <@double> %0 %1\n"
+stmt:	ASGNP8(pval, addr)            "#%c = COMMINST @uvm.native.pin <@typeof_0> %0_ref\n%1 = PTRCAST <@typeof_c @typeof_1> %c\n"
+stmt:	ASGNI1(pval, cval)            "#\t\tSTORE PTR <@char> %0 %1\n"
+stmt:	ASGNU1(pval, cval)            "#\t\tSTORE PTR <@uchar> %0 %1\n"
+stmt:	ASGNI2(pval, sval)            "#\t\tSTORE PTR <@short> %0 %1\n"
+stmt:	ASGNU2(pval, sval)            "#\t\tSTORE PTR <@ushort> %0 %1\n"
+stmt:	ASGNI4(pval, ival)            "#\t\tSTORE PTR <@int> %0 %1\n"
+stmt:	ASGNU4(pval, ival)            "#\t\tSTORE PTR <@uint> %0 %1\n"
+stmt:	ASGNI8(pval, lval)            "#\t\tSTORE PTR <@long> %0 %1\n"
+stmt:	ASGNU8(pval, lval)            "#\t\tSTORE PTR <@ulong> %0 %1\n"
+stmt:	ASGNF4(pval, fval)            "#\t\tSTORE PTR <@float> %0 %1\n"
+stmt:	ASGNF8(pval, dval)            "#\t\tSTORE PTR <@double> %0 %1\n"
 
 stmt:	LTI4(ival, ival)              "\t\t%%%b = SLT <@int> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
 stmt:	LTU4(ival, ival)              "\t\t%%%b = ULT <@uint> %0 %1\n\t\tBRANCH2 %%%b %%%a %%%c\n"
@@ -385,8 +436,8 @@ addr:	ADDRFP8                       "%%%a"
 addr:	ADDRLP8                       "%%%a"
 addr: VREGP                         "%%%a"
 
-mem:	INDIRB(addr)                  "%0"
-mem:	INDIRB(pval)                  "%0"
+mem:	INDIRB(addr)                  "#(LOAD<@type> %0)\n"
+mem:	INDIRB(pval)                  "#(LOAD<@type> %0)\n"
 
 val:	cval                          "%0"
 val:	sval                          "%0"
@@ -401,10 +452,10 @@ cval:	LOADI1(cval)                  "#\n"
 cval:	LOADU1(cval)                  "#\n"
 cval:	CNSTI1                        "@char_%a"
 cval:	CNSTU1                        "@uchar_%a"
-cval:	INDIRI1(addr)                 "%0"
-cval:	INDIRI1(pval)                 "(%c = LOAD <@char> %0)\n"
-cval:	INDIRU1(addr)                 "%0"
-cval:	INDIRU1(pval)                 "(%c = LOAD <@uchar> %0)\n"
+cval:	INDIRI1(addr)                 "#(%c = LOAD PTR <@char> %0)\n"
+cval:	INDIRI1(pval)                 "#(%c = LOAD PTR <@char> %0)\n"
+cval:	INDIRU1(addr)                 "#(%c = LOAD PTR <@uchar> %0)\n"
+cval:	INDIRU1(pval)                 "#(%c = LOAD PTR <@uchar> %0)\n"
 
 cvar:	CVII1(sval)                   "(%c = TRUNC <@short @char> %0)\n"
 cvar:	CVII1(ival)                   "(%c = TRUNC <@int @char> %0)\n"
@@ -426,10 +477,10 @@ sval:	LOADI2(val)                   "#\n"
 sval:	LOADU2(val)                   "#\n"
 sval:	CNSTI2                        "@short_%a"
 sval:	CNSTU2                        "@ushort_%a"
-sval:	INDIRI2(addr)                 "%0"
-sval:	INDIRI2(pval)                 "(%c = LOAD <@short> %0)\n"
-sval:	INDIRU2(addr)                 "%0"
-sval:	INDIRU2(pval)                 "(%c = LOAD <@ushort> %0)\n"
+sval:	INDIRI2(addr)                 "#(%c = LOAD PTR <@short> %0)\n"
+sval:	INDIRI2(pval)                 "#(%c = LOAD PTR <@short> %0)\n"
+sval:	INDIRU2(addr)                 "#(%c = LOAD PTR <@ushort> %0)\n"
+sval:	INDIRU2(pval)                 "#(%c = LOAD PTR <@ushort> %0)\n"
 
 svar:	CVII2(cval)                   "(%c = SEXT <@char @short> %0)\n"
 svar:	CVII2(ival)                   "(%c = TRUNC <@int @short> %0)\n"
@@ -451,10 +502,10 @@ ival:	LOADI4(val)                   "#\n"
 ival:	LOADU4(val)                   "#\n"
 ival:	CNSTI4                        "@int_%a"
 ival:	CNSTU4                        "@uint_%a"
-ival:	INDIRI4(addr)                 "%0"
-ival:	INDIRI4(pval)                 "(%c = LOAD <@int> %0)\n"
-ival:	INDIRU4(addr)                 "%0"
-ival:	INDIRU4(pval)                 "(%c = LOAD <@uint> %0)\n"
+ival:	INDIRI4(addr)                 "#(%c = LOAD PTR <@int> %0)\n"
+ival:	INDIRI4(pval)                 "#(%c = LOAD PTR <@int> %0)\n"
+ival:	INDIRU4(addr)                 "#(%c = LOAD PTR <@uint> %0)\n"
+ival:	INDIRU4(pval)                 "#(%c = LOAD PTR <@uint> %0)\n"
 
 ivar:	NEGI4(ival)                   "(%c = XOR <@int> %0 @int_2147483648)\n"
 ivar:	BCOMI4(ival)                  "(%c = XOR <@int> %0 @int_4294967295)\n"
@@ -508,10 +559,10 @@ lval:	LOADI8(val)                   "#\n"
 lval:	LOADU8(val)                   "#\n"
 lval:	CNSTI8                        "@long_%a"
 lval:	CNSTU8                        "@ulong_%a"
-lval:	INDIRI8(addr)                 "%0"
-lval:	INDIRI8(pval)                 "(%c = LOAD <@long> %0)\n"
-lval:	INDIRU8(addr)                 "%0"
-lval:	INDIRU8(pval)                 "(%c = LOAD <@ulong> %0)\n"
+lval:	INDIRI8(addr)                 "#(%c = LOAD PTR <@long> %0)\n"
+lval:	INDIRI8(pval)                 "#(%c = LOAD PTR <@long> %0)\n"
+lval:	INDIRU8(addr)                 "#(%c = LOAD PTR <@ulong> %0)\n"
+lval:	INDIRU8(pval)                 "#(%c = LOAD PTR <@ulong> %0)\n"
 
 lvar:	NEGI8(lval)                   "(%c = XOR <@long> %0 @long_9223372036854775808)\n"
 lvar:	BCOMI8(lval)                  "(%c = XOR <@long> %0 @long_18446744073709551615)\n"
@@ -564,8 +615,8 @@ lvar:	CVPU8(pval)                   "#(%c = PTRCAST <@ptr_void @ulong> %0)\n"
 pval:	pvar                          "%0"
 pval:	LOADP8(val)                   "#\n"
 pval:	CNSTP8                        "#@ptr_%a"
-pval:	INDIRP8(addr)                 "%0"
-pval:	INDIRP8(pval)                 "#(%c = LOAD <@ptr_type> %0)\n"
+pval:	INDIRP8(addr)                 "#(%c = LOAD PTR <@ptr_type> %0)\n"
+pval:	INDIRP8(pval)                 "#(%c = LOAD PTR <@ptr_type> %0)\n"
 
 pvar:	CALLP8(addr)                  "#CALL <@sig> @func_ref (%args)\n"
 pvar:	CALLP8(pval)                  "#CALL <@sig> @func_ref (%args)\n"
@@ -576,7 +627,6 @@ pvar:	CVUP8(ival)                   "#		%c = PTRCAST <@uint @ptr_type> %0\n"
 pvar:	CVUP8(lval)                   "#		%c = PTRCAST <@ulong @ptr_type> %0\n"
 pvar:	ADDP8(val, lval)              "#(%c = PADD <@ptr_type @long> %0 %1)\n"
 pvar:	ADDP8(addr, val)              "#\n"
-pvar:	ADDP8(val, addr)              "#\n"
 pvar:	SUBP8(val, val)               "#\n"
 pvar:	SUBP8(addr, val)              "#\n"
 pvar:	SUBP8(val, addr)              "#\n"
@@ -584,8 +634,8 @@ pvar:	SUBP8(val, addr)              "#\n"
 fval:	fvar                          "%0"
 fval:	LOADF4(val)                   "#\n"
 fval:	CNSTF4                        "@float_%a"
-fval:	INDIRF4(addr)                 "%0"
-fval:	INDIRF4(pval)                 "(%c = LOAD <@float> %0)\n"
+fval:	INDIRF4(addr)                 "#(%c = LOAD PTR <@float> %0)\n"
+fval:	INDIRF4(pval)                 "#(%c = LOAD PTR <@float> %0)\n"
 
 fvar:	NEGF4(fval)                   "(%c = FMUL <@float> %0 @float_-1)\n"
 fvar:	ADDF4(fval, fval)             "(%c = FADD <@float> %0 %1)\n"
@@ -605,8 +655,8 @@ fvar:	CVFF4(dval)                   "(%c = FPTRUNC <@double @float> %0)\n"
 dval:	dvar                          "%0"
 dval:	LOADF8(val)                   "#\n"
 dval:	CNSTF8                        "@double_%a"
-dval:	INDIRF8(addr)                 "%0"
-dval:	INDIRF8(pval)                 "(%c = LOAD <@double> %0)\n"
+dval:	INDIRF8(addr)                 "#(%c = LOAD PTR <@double> %0)\n"
+dval:	INDIRF8(pval)                 "#(%c = LOAD PTR <@double> %0)\n"
 
 dvar:	NEGF8(dval)                   "(%c = FMUL <@double> %0 @double_-1)\n"
 dvar:	ADDF8(dval, dval)             "(%c = FADD <@double> %0 %1)\n"
@@ -682,6 +732,7 @@ Interface muIR = {
 };
 
 //%BOT_START
+///Initialize variables and do program-wide setup
 static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
@@ -739,7 +790,14 @@ static void progbeg(int argc, char *argv[])
 	vmask[0] = vmask[1] = 0;
 }
 
-char *fgetl(char **buf, size_t *sz, FILE *f) {
+enum InstState
+{
+	UNFINISHED_INST = 1,
+	CALL_INST = 2,
+	CALL_PARAMS = 4
+};
+char *fgetl(char **buf, size_t *sz, FILE *f)
+{
 	size_t s = *sz;
 	char *res = fgets(*buf, s, f), *tmp;
 	while (res && !ferror(f) && (*buf)[strlen(*buf) - 1] != '\n') {
@@ -755,13 +813,8 @@ char *fgetl(char **buf, size_t *sz, FILE *f) {
 	*sz = s;
 	return res;
 }
-enum InstState
+static void progend(void)
 {
-	UNFINISHED_INST = 1,
-	CALL_INST = 2,
-	CALL_PARAMS = 4
-};
-static void progend(void) {
 	size_t bufsz = 256;
 	char *tmpf = stringf("%s.tmp", outf), *buf = allocate(bufsz, PERM);
 
@@ -808,7 +861,7 @@ static void progend(void) {
 
 	mn = muconst_list;
 	do {
-		Const c = ELEM(Const, mn);
+		MuConst c = ELEM(MuConst, mn);
 		printf(".const @%s <@%s> = %s\n", c->name, type_name(c->type), c->val);
 	} while ((mn = mn->next) != NULL);
 	printf("\n");
@@ -864,7 +917,7 @@ static void progend(void) {
 						MuInst parent = inst;
 						muprepend(&inst_list, NEW0(inst, STMT), STMT);
 						inst->parent = parent;
-						if (strncmp(buf + i - 1, "%(", 2) == 0) //special case for assigning from unions
+						if (strncmp(buf + i - 1, "%(", 2) == 0) //special case for when a symbol name is itself an instruction
 							inst->inst[inst_buf_idx++] = '%';
 					} else
 						/*for muti argument instructions where both args can be trees of instructions the whole thing has to be wrapped in ()
@@ -928,17 +981,28 @@ static void address(Symbol p, Symbol q, long n)
 	else if (isstruct(q->type)) {
 		Field f;
 		for (f = q->type->u.sym->u.s.flist; f; f = f->link)
-			if (f->offset == n)
+			if (f->link && f->link->offset >= n)
 				break;
-		name = stringf("%s_%s", q->name, f->name);
-		//TODO: deal with arrays in structs in address?
-		p->type = ptr(p->type);
+		if (f->offset != n) {
+			todo("add support for arrays in structs in address");
+		} else
+			name = stringf("%s_%s", q->name, f->name);
 	} else if (isarray(q->type)) {
-		Symbol s = intconst(n / unqual(q->type->type)->size);
-		name = stringf("(%s_%s = GETELEMIREF <@%s @%s> %%%s_iref @%s)\n", q->name, s->name, type_name(q->type), type_name(s->type), q->name, const_name(s->type, s->name));
-		p->type = ptr(unqual(q->type->type));
+		Type t = unqual(indir(q->type));
+		Symbol s = intconst(n / t->size);
+		name = stringf("(%s_%s = GETELEMIREF <@%s @%s> %%%s_iref @%s)\n",
+							q->name, s->name, type_name(q->type), type_name(s->type), q->name, const_name(s->type, s->name));
+		p->type = ptr(t);
 	} else if (isptr(q->type)) {
-		panic("add a case for ptrs in address");
+		Type t = unqual(indir(q->type));
+		if (isarray(t)) {
+			Type t2 = unqual(indir(t));
+			Symbol s = intconst(n / t2->size);
+			name = stringf("(%s_%s = GETELEMIREF <@%s @%s> %%%s_iref @%s)\n",
+								q->name, s->name, type_name(q->type), type_name(s->type), q->name, const_name(s->type, s->name));
+			p->type = ptr(t);
+		} else
+			panic("was expecting an array ptr in address");
 	} else
 		panic("add a case for type %s in address", type_name(q->type));
 
@@ -1024,7 +1088,8 @@ static void defsymbol(Symbol p)
 		p->x.name = p->name;
 }
 
-static bool def_func(char *fname, Type ft, bool import) {
+static bool_t def_func(char *fname, Type ft, bool_t import)
+{
 	if (ft->u.f.oldstyle) {
 		printf("//There are Ph.D.'s who are younger than ANSI C, dawg\n//Omitted Pre-ANSI C function %s.\n", fname);
 		return false;
@@ -1086,6 +1151,8 @@ static void export(Symbol p)
 {
 	if (!isfunc(p->type))
 		exporting = p->x.name;
+	else
+		printf("COMMINST @uvm.native.expose [#DEFAULT] <[@%s_sig]>\n", p->x.name);
 }
 static void global(Symbol p)
 {
@@ -1096,8 +1163,11 @@ static void global(Symbol p)
 }
 static void local(Symbol p)
 {
+	printf("\t\t%s_iref = ALLOCA <@%s>\n", NAME(p), type_name(p->type));
+	printf("\t\t%s = COMMINST @uvm.native.pin <@%s_iref> %s_iref\n", NAME(p), type_name(p->type), NAME(p));
 	if (!isscalar(p->type)) {
-		printf("\t\t%s = ALLOCA <@%s>\n", stringf("%%%s_iref", p->name), type_name(p->type));
+		//TODO: work on pinning, need to get an ref after pinning so that we can pin the ptr
+		printf("\t\t%s_ptr = GETREF <@%s> %s_ptr_ref\n", NAME(p), type_name(ptr(p->type)), NAME(p));
 		if (isstruct(p->type))
 			print_fields(p);
 	}
@@ -1112,31 +1182,22 @@ static void space(int n)
 	printf("//%s(%d) called\n", __FUNCTION__, n);
 }
 
-/*
-	Generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch)
- */
-static void mugen_cond(Node p) {
-	if (p == NULL)
-		return;
-	int op = generic(p->op);
-	if (op == GT || op == GE || op == EQ || op == NE || op == LE || op == LT) {
-		p->syms[1] = newtemp(AUTO, optype(p->op), opsize(p->op));
-		p->syms[1]->x.name = stringf("cond_%s", p->syms[1]->name);
-		p->syms[2] = findlabel(genlabel(1));
-		Node tmp = newnode(LABEL + V, NULL, NULL, p->syms[2]);
-		tmp->link = p->link;
-		p->link = tmp;
-	}
-	mugen_cond(p->kids[0]);
-	mugen_cond(p->kids[1]);
+//Create a copy of a sym, assign it to the origonal location, and return the origonal symbol
+static Symbol clone_sym(Symbol *s)
+{
+	Symbol snew = NEW(snew, FUNC), sold = *s;
+	memcpy(snew, *s, sizeof(*snew));
+	*s = snew;
+	return sold;
 }
 
 /*
-	ONLY CALL WITH ROOT NODES
-	Generates asgn nodes for fuctions that return values but the program has not stored that value
-	We need this because everything except CALLV is not a statement
+ONLY CALL WITH ROOT NODES
+Generates asgn nodes for fuctions that return values but the program has not stored that value
+We need this because everything except CALLV is not a statement
 */
-static void mugen_fasgn(Node p, Node *forest) {
+static void mugen_fasgn(Node p, Node *forest)
+{
 	if (generic(p->op) != CALL || optype(p->op) == V) return;
 
 	int type = optype(p->op), sz = opsize(p->op);
@@ -1157,26 +1218,94 @@ static void mugen_fasgn(Node p, Node *forest) {
 }
 
 /*
-	Generates a variable name for each instruction's result
- */
-static void mugen_var(Node p, int child) {
-	if (p == NULL)
-		return;
-	if (child && optype(p->op) != B && (p->x.inst || generic(p->op) == INDIR)) {
-		//should have a "register" allocated to it
-		assert(p->syms[2]);
-		p->syms[2] = newtemp(AUTO, optype(p->op), opsize(p->op));
-		p->syms[2]->x.name = stringf("%%var_%s.%d", p->syms[2]->name, p->syms[2]->scope - LOCAL);
+	fix storing to arrays (ex. arr[0] = 1), need to get reference to first elem of array and store to that
+	also fix other issues with storing to pointers?
+*/
+static void fix_asgn_to_ptr(Node n)
+{
+	Node k0 = n->kids[0], k1 = n->kids[1], tmp;
+	Type t0 = indir(node_type(k0, false)), t1 = node_type(k1, false);
+	Symbol s;
+	assert(generic(n->op) == ASGN);
+	assert(isptr(t0) || isarray(t0));
+	if (isaddr(k0->op) && isarray(t0)) {
+		s = clone_sym(&(k0->syms[0]));
+		k0->syms[0]->x.name = stringf("(%s_0 = GETELEMIREF <@%s @%s> %s @%s)\n",
+												s->name, type_name(s->type), type_name(unsignedtype), NAME(s), const_name(unsignedtype, "0"));
+		k0->syms[0]->type = ptr(indir(t0));
 	}
-	mugen_var(p->kids[0], child + 1);
-	mugen_var(p->kids[1], child + 1);
 }
 
-static void mugen_walk(Node n) {
+//TODO: do this in emit2
+//static void fix_ptr_arith(Node n) {
+//	Node k0 = n->kids[0], k1 = n->kids[1];
+//	Type t0 = indir(node_type(k0, false)), t1 = node_type(k1, false);
+//	assert(t1 == longtype || t1 == unsignedlong);
+//
+//	if (isscalar(t0)) {
+//		Value v;
+//		v.u = unqual(t0)->size;
+//		n->kids[1] = newnode(DIV + ttob(t1), k1, newnode(CNST + ttob(t1), NULL, NULL, constant(t1, v)), NULL);
+//	} else if (isarray(t0) || isstruct(t0)) {
+//		size_t off;
+//		if (generic(k1->op) == CNST) {
+//			off = k1->syms[0]->u.value;
+//		} else if (isarray(t0)) {
+//			/*we want to emit
+//				%tmp = GETELEMREF <@type_name(t1)> k0 k1
+//			*/
+//		} else
+//			panic("we do not support adding arbitrary values to struct ptrs");
+//	} else
+//		assert(false);
+//}
+
+static void mugen_walk(Node n, Node parent)
+{
 	if (n == NULL)
 		return;
-	mugen_walk(n->kids[0]);
-	mugen_walk(n->kids[1]);
+
+	Node k0 = n->kids[0], k1 = n->kids[1];
+	Type t = node_type(n, true), t0 = node_type(k0, true), t1 = node_type(k1, true);
+	int op = generic(n->op), opt = optype(n->op), opsz = opsize(n->op);
+
+	mugen_walk(k0, n);
+	mugen_walk(k1, n);
+
+	if (isaddr(n->op) && indir(t) && isunion(indir(t))) {
+		//TODO: figure out unions :(
+		//Symbol s = clone_sym(&(n->syms[0]));
+		//Type pt = node_type(parent, false);
+		//n->syms[0]->x.name = stringf("%s_iref_%s", s->x.name, type_name(pt));
+		//n->syms[0]->type = ptr(pt);
+	}
+
+	////adds LOAD instuctions for retrieving values from a union
+	//if (isaddr(n->op) && isunion(indir(t)) && optype(parent->op) != B) {
+	//	Symbol tmp = newtemp(AUTO, optype(parent->op), opsize(parent->op)), s = clone_sym(&(n->syms[0]));
+	//	char *ptname = type_name(btot(optype(parent->op), opsize(parent->op)));
+	//	n->syms[0]->x.name = stringf("(%s_tmp = LOAD <@%s> %%%s_iref_%s)\n", tmp->name, ptname, s->name, ptname);
+	//}
+
+	// Generates symbols and a node to bridge between LCC conditional branches (one node) and
+	// Mu branches (comparison then cond branch)
+	if (op == GT || op == GE || op == EQ || op == NE || op == LE || op == LT) {
+		n->syms[1] = newtemp(AUTO, opt, opsz);
+		n->syms[1]->x.name = stringf("cond_%s", n->syms[1]->name);
+		n->syms[2] = findlabel(genlabel(1));
+		Node tmp = newnode(LABEL + V, NULL, NULL, n->syms[2]);
+		tmp->link = n->link;
+		n->link = tmp;
+	}
+
+	//normalize ptr ops to have the ptr be the left child
+	if (op == ADD && opt == P && (isptr(t1) || isarray(t1))) {
+		n->kids[0] = k1;
+		n->kids[1] = k0;
+	}
+
+	if (op == ASGN && (isptr(indir(t0)) || isarray(indir(t0))))
+		fix_asgn_to_ptr(n);
 
 	//For sanity
 	for (size_t i = 0; i < 2; i++)
@@ -1189,61 +1318,23 @@ static void mugen_walk(Node n) {
 			n->syms[i]->name = stringf("gen_%s", n->syms[i]->name);
 			n->syms[i]->x.name = n->syms[i]->name;
 		}
-
-	//TODO: fix the addition for struct/array ptrs so that it uses the field, not adds a DIV
-	//make ptr arithmatic add/sub by # of referent type, not bytes
-	//if (n->op == ADD + P + sizeop(8) || n->op == SUB + P + sizeop(8)) {
-	//	Node k0 = n->kids[0], k1 = n->kids[1];
-	//	Type t0 = node_type(k0), t1 = node_type(k1);
-	//	if (isarith(t0)) {
-	//		Value v;
-	//		v.u = deref(t1)->size;
-	//		n->kids[0] = newnode(DIV + ttob(t0), k0, NULL, NULL);
-	//		n->kids[0]->kids[1] = newnode(CNST + ttob(t0), NULL, NULL, constant(t0, v));
-	//	} else if (isarith(t1)) {
-	//		Value v;
-	//		v.u = deref(t0)->size;
-	//		n->kids[1] = newnode(DIV + ttob(t1), k1, NULL, NULL);
-	//		n->kids[1]->kids[1] = newnode(CNST + ttob(t1), NULL, NULL, constant(t1, v));
-	//	} else //lcc generates SUBU8 nodes for ptr - ptr subtraction, so if we get here it must be an ADDP
-	//		panic("neither ADDP->kids[0] or ADDP->kids[1] was an arith type");
-	//}
 }
 
-//Emits (since there are no LCC OPs that make sense) instructions to get references to all unions used in a function
-//      and creates a ref of the proper type for each thing that gets assigned to unions.
-//Also adds LOAD instuctions for retrieving values from a union
-static void mugen_unions(Node p, Node parent) {
+/*
+Generates a variable name for each instruction's result
+*/
+static void mugen_var(Node p, int child)
+{
 	if (p == NULL)
 		return;
-
-	if (generic(p->op) == ASGN &&
-		 p->kids[0] && p->kids[0]->syms[0] && p->kids[0]->syms[0]->type &&
-		 isunion(p->kids[0]->syms[0]->type)) {
-		//asigning to a union, convert thing being assigned
-		Node kid = p->kids[0];
-		Type union_type = kid->syms[0]->type;
-		Symbol s = kid->syms[0];
-		char *name = kid->syms[0]->x.name;
-		NEW0(kid->syms[0], FUNC);
-		memcpy(kid->syms[0], s, sizeof(*s));
-		kid->syms[0]->x.name = stringf("%s_iref_%s", name, type_name(btot(optype(p->op), opsize(p->op))));
-
-		//obviously don't want to recurse on the left child, since we've aleady dealt with it
-		mugen_unions(p->kids[1], p);
-		return;
-	} else if ((generic(p->op) == ADDRF || generic(p->op) == ADDRG || generic(p->op) == ADDRL) &&
-				  p->syms[0] && p->syms[0]->type &&
-				  isunion(p->syms[0]->type) &&
-				  optype(parent->op) != B) {
-		Symbol tmp = newtemp(AUTO, optype(parent->op), opsize(parent->op)), s = p->syms[0];
-		char *ptname = type_name(btot(optype(parent->op), opsize(parent->op)));
-		NEW0(p->syms[0], FUNC);
-		memcpy(p->syms[0], s, sizeof(*s));
-		p->syms[0]->x.name = stringf("(%s_tmp = LOAD <@%s> %%%s_iref_%s)\n", tmp->name, ptname, s->name, ptname);
+	if (child && optype(p->op) != B && (p->x.inst || generic(p->op) == INDIR)) {
+		//should have a "register" allocated to it
+		assert(p->syms[2]);
+		p->syms[2] = newtemp(AUTO, optype(p->op), opsize(p->op));
+		p->syms[2]->x.name = stringf("%%var_%s.%d", p->syms[2]->name, p->syms[2]->scope - LOCAL);
 	}
-	mugen_unions(p->kids[0], p);
-	mugen_unions(p->kids[1], p);
+	mugen_var(p->kids[0], child + 1);
+	mugen_var(p->kids[1], child + 1);
 }
 
 /*
@@ -1252,13 +1343,11 @@ static void mugen_unions(Node p, Node parent) {
 	2. remove labels at end of functions or add default return val
 	3. add RETV to all funcs that don't explicitly return (possibly fixed by 2)
  */
-static Node mugen(Node forest) {
+static Node mugen(Node forest)
+{
 	for (Node p = forest; p; p = p->link) {
-		mugen_cond(p);
-		mugen_walk(p);
-
+		mugen_walk(p, NULL);
 		mugen_fasgn(p, &forest);
-		mugen_unions(p, NULL);
 	}
 
 	gen(forest);
@@ -1270,7 +1359,8 @@ static Node mugen(Node forest) {
 }
 
 //XInterface funcs
-static Symbol rmap(int opk) {
+static Symbol rmap(int opk)
+{
 	switch (optype(opk)) {
 	case B:
 	case P:
@@ -1297,9 +1387,18 @@ static void blkloop(int dreg, int doff, int sreg, int soff, int size, int tmps[]
 	printf("//%s called\n", __FUNCTION__);
 }
 
-static Type node_type(Node p) {
+static Type node_type(Node p, bool_t arrays_as_ptrs)
+{
 	if (p == NULL)
 		return NULL;
+	int opg = generic(p->op);
+
+	//if the op is a statement (inst executed for side effects) then its type is void
+	if (opg == ARG || opg == ASGN ||
+		 opg == LT || opg == LE || opg == EQ || opg == GE || opg == GT || opg == NE ||
+		 opg == LABEL || opg == JUMP || p->op == CALL + V)
+		return voidtype;
+
 	if (optype(p->op) == B) {
 		if (p->op == INDIR + B)
 			return p->kids[0]->syms[0]->type;
@@ -1309,15 +1408,15 @@ static Type node_type(Node p) {
 	if (optype(p->op) != P)
 		return btot(p->op, opsize(p->op));
 
-	Type t1 = node_type(p->kids[0]), t2 = node_type(p->kids[1]);
+	Type t1 = node_type(p->kids[0], arrays_as_ptrs), t2 = node_type(p->kids[1], arrays_as_ptrs);
 	switch (generic(p->op)) {
 	case ADDRL:
 	case ADDRF:
 	case ADDRG:
 		if (p->syms[0]->type == NULL) //for labels
-			return NULL;
-		if (isarray(p->syms[0]->type))
-			return ptr(p->syms[0]->type->type);
+			return voidtype;
+		if (isarray(p->syms[0]->type) && arrays_as_ptrs)
+			return ptr(ptr(indir(p->syms[0]->type)));
 		return ptr(p->syms[0]->type);
 	case INDIR:
 		return t1->type;
@@ -1337,15 +1436,21 @@ static Type node_type(Node p) {
 			return t2;
 		else
 			panic("unknown type for addp/subp (neither subtree was a ptr)");
+		assert(false);
+		break;
+	case RET:
+		return voidtype;
 		break;
 	default:
+		assert(false);
 		break;
 	}
 
 	return NULL;
 }
 
-static void emit_children(Node p) {
+static void emit_children(Node p)
+{
 	short *nts = _nts[_rule(p->x.state, p->x.inst)];
 	if (p->kids[0])
 		emitasm(p->kids[0], nts[0]);
@@ -1355,12 +1460,83 @@ static void emit_children(Node p) {
 	}
 }
 
+static void emit_asgnp(Node p)
+{
+	Node k0 = p->kids[0], k1 = p->kids[1];
+	Symbol s0 = k0->syms[0], s1 = k1->syms[0];
+	Type t0 = node_type(k0, true), t1 = node_type(k1, true), t;
+	//TODO: look at this. Still need to pin but can't assume global. also need to add a list of pinned objects that will get unpinned after func exit
+	switch (generic(k1->op)) {
+	case INDIR: //In this case there are some number of INDIR nodes until we get to an ADDR node so we need to perform some number of LOADs
+		if (generic(k1->kids[0]->op) == ADDRL || generic(k1->kids[0]->op) == ADDRF || generic(k1->kids[0]->op) == ADDRG) {
+			if (isptr(t0)) {
+				printf("(STORE <@%s> ", type_name(t0));
+				emit_children(p);
+				printf(")\n");
+			} else {
+				printf("\t\t%s = PTRCAST <@%s @%s> ", s0->x.name, type_name(t1), type_name(t0));
+				emit_children(k1);
+			}
+			printf("\n");
+		} else if (generic(k1->kids[0]->op) == INDIR) {
+			size_t indirs = 1;
+			//we need to construct the chain of LOADs already knowing how many indirs there are since we need to know what type we are loading at each step
+			while (generic((k1 = k1->kids[0])->op) == INDIR) indirs++;
+			//at this point k1 should be an ADDR{L,F,G} and so k1->syms[0] is the var we are loading from
+			s1 = k1->syms[0];
+			Type base_t = unqual(s1->type);
+			t = base_t;
+
+			for (size_t i = indirs; i; i--) t = t->type;
+
+			//initialize res to loc since if the tree is just INDIR(ADDR(var)) we will never enter the loop
+			char *loc = s1->x.name, *res = loc;
+			//TODO: the loop condition needs work: we don't want to get to the base type, we probably want to get to some less indirect type
+			//i think the whole method of doing this needs to be reworked
+			while ((t = ptr(t)) != base_t) {
+				res = stringf("%d_tmp", genlabel(1));
+				printf("\t\t%%%s = LOAD PTR <@%s> %%%s\n", res, type_name(t), loc);
+				loc = res;
+			}
+			printf("\t\t%s = PTRCAST <@%s @%s> %%%s\n", XNAME(s0), type_name(t->type), type_name(s0->type), res);
+		} else if (k1->kids[0]->x.inst) {
+			short *nts = _nts[_rule(p->x.state, p->x.inst)];
+			printf("\t\t%s = ", XNAME(s0));
+			emitasm(k1, nts[1]);
+			printf("\n");
+		} else
+			panic("ASGNP->kids[1] was an INDIRP but ASGNP->kids[1]->kids[0] was neither an INDIR/ADDR or an instruction so...");
+		break;
+	case ADDRL: //Tree is ASGNP(ADDR,ADDR)
+		t = s1->type;
+		char *tmp = stringf("%%%d_%s", genlabel(1), s0->x.name);
+		/*this does need to be done in two steps (we can't just asign to the result) because the following example is valid:
+		short *sp = NULL;
+		char **cpp = (char **)&sp;
+		*/
+		printf("\t\t%s = COMMINST @uvm.native.pin <@%s> %s\n", tmp, type_name(t), XNAME(s1));
+		printf("\t\t%s = PTRCAST <@%s @%s> %s\n", XNAME(s0), type_name(ptr(t)), type_name(s0->type), tmp);
+		break;
+	case CNST: //Tree is ASGNP(ADDR,CNST)
+		printf("\t\t%s = PTRCAST <@%s @%s> @%s\n", XNAME(s0), type_name(voidptype), type_name(s0->type), const_name(voidptype, s1->x.name));
+		break;
+	default: //Tree is ASGNP(ADDR,?)
+		if (k1->x.inst) {
+			printf("\t\t%%%s = ", k0->syms[0]->x.name);
+			emitasm(k1, _nts[_rule(p->x.state, p->x.inst)][1]);
+			printf("\n");
+		} else
+			todo("ASGNP->kids[1] was not an instruction and op not recognized");
+		break;
+	}
+}
+
 //TODO: gen -> emit conversion nodes for INDIRI1(INDIRI4(...)) as well as ASGNP when node_type(k0) != node_type(k1)
 static void emit2(Node p)
 {
 	Node k0 = p->kids[0], k1 = p->kids[1];
 	Symbol s0, s1;
-	Type t0 = node_type(k0), t1 = node_type(k1);
+	Type t0 = node_type(k0, true), t1 = node_type(k1, true);
 	switch (generic(p->op)) {
 	case ADD:
 		//TODO: figure out if ADDP(ADDR,...) or ADDP(...,ADDR) need anything different
@@ -1384,80 +1560,11 @@ static void emit2(Node p)
 			} else
 				panic("OP %d NOT RECOGNIZED", p->op);
 		} else if (optype(p->op) == P) {
-			//TODO: look at this. Still need to pin but can't assume global. also need to add a list of pinned objects that will get unpinned after func exit
-			s0 = k0->syms[0];
-			Type t;
-			switch (generic(k1->op)) {
-			case INDIR: //In this case there are some number of INDIR nodes until we get to an ADDR node so we need to perform some number of LOADs
-				if (generic(k1->kids[0]->op) == INDIR || generic(k1->kids[0]->op) == ADDRL || generic(k1->kids[0]->op) == ADDRF || generic(k1->kids[0]->op) == ADDRG) {
-					size_t indirs = 1;
-					//we need to construct the chain of LOADs already knowing how many indirs there are since we need to know what type we are loading at each step
-					while (generic((k1 = k1->kids[0])->op) == INDIR) indirs++;
-					//at this point k1 should be an ADDR{L,F,G} and so k1->syms[0] is the var we are loading from
-					s1 = k1->syms[0];
-					Type base_t = unqual(s1->type);
-					t = base_t;
-
-					if (isunion(t)) {
-						//don't have to check k1k0->op since if t is a union k1k0->op cannot be INDIR (since that would require dereferencing a union)
-						if (isptr((t = node_type(k0)))) {
-							printf("(STORE <@%s> ", type_name(t));
-							emit_children(p);
-							printf(")\n");
-						} else {
-							printf("\t\t%s = PTRCAST <@%s @%s> ", k0->syms[0]->x.name, type_name(node_type(k1)), type_name(node_type(k0)));
-							emit_children(k1);
-						}
-						printf("\n");
-						break;
-					}
-
-					for (size_t i = indirs; i; i--) t = t->type;
-
-					//initialize res to loc since if the tree is just INDIR(ADDR(var)) we will never enter the loop
-					char *loc = s1->x.name, *res = loc;
-					//TODO: the loop condition needs work: we don't want to get to the base type, we probably want to get to some less indirect type
-					//i think the whole method of doing this needs to be reworked
-					while ((t = ptr(t)) != base_t) {
-						res = stringf("%d_tmp", genlabel(1));
-						printf("\t\t%%%s = LOAD PTR <@%s> %%%s\n", res, type_name(t), loc);
-						loc = res;
-					}
-					printf("\t\t%s = PTRCAST <@%s @%s> %%%s\n", XNAME(s0), type_name(t->type), type_name(s0->type), res);
-				} else if (k1->kids[0]->x.inst) {
-					short *nts = _nts[_rule(p->x.state, p->x.inst)];
-					printf("\t\t%s = ", XNAME(s0));
-					emitasm(k1, nts[1]);
-					printf("\n");
-				} else
-					panic("ASGNP->kids[1] was an INDIRP but ASGNP->kids[1]->kids[0] was neither an INDIR/ADDR or an instruction so...");
-				break;
-			case ADDRL: //Tree is ASGNP(ADDR,ADDR)
-				s1 = k1->syms[0];
-				t = s1->type;
-				char *tmp = stringf("%%%d_%s", genlabel(1), s0->x.name);
-				/*this does need to be done in two steps (we can't just asign to the result) because the following example is valid:
-				short *sp = NULL;
-				char **cpp = (char **)&sp;
-				*/
-				printf("\t\t%s = COMMINST @uvm.native.pin <@%s> %s\n", tmp, type_name(t), XNAME(s1));
-				printf("\t\t%s = PTRCAST <@%s @%s> %s\n", XNAME(s0), type_name(ptr(t)), type_name(s0->type), tmp);
-				break;
-			case CNST: //Tree is ASGNP(ADDR,CNST)
-				s1 = k1->syms[0];
-				printf("\t\t%s = PTRCAST <@%s @%s> @%s\n", XNAME(s0), type_name(voidptype), type_name(s0->type), const_name(voidptype, s1->x.name));
-				break;
-			default: //Tree is ASGNP(ADDR,?)
-				if (k1->x.inst) {
-					printf("\t\t%%%s = ", k0->syms[0]->x.name);
-					emitasm(k1, _nts[_rule(p->x.state, p->x.inst)][1]);
-					printf("\n");
-				} else
-					todo("ASGNP->kids[1] was not an instruction and op not recognized");
-				break;
-			} //END ASGN switch
-		} else
-			todo("OP %d NOT RECOGNIZED", p->op);
+			emit_asgnp(p);
+		} else {
+			assert(isptr(t0));
+			printf("STORE <@%s> //TODO\n", type_name(t0));
+		}
 		break;
 	case CALL:
 		char *sig, *ref;
@@ -1465,7 +1572,7 @@ static void emit2(Node p)
 			sig = k0->syms[0]->name;
 			ref = stringf("@%s_ref", k0->syms[0]->name);
 		} else { //k0 results in a ufuncptr
-			sig = type_name(node_type(k0)->type);
+			sig = type_name(indir(node_type(k0, false)));
 			ref = k0->syms[2]->x.name;
 			//this load is in addition to any emited by the children
 			printf("(%s = LOAD <@%s_ref> ", ref, sig);
@@ -1496,10 +1603,13 @@ static void emit2(Node p)
 		printf(")\n");
 		break;
 	case INDIR:
-		assert(optype(p->op) == P);
-		printf("(%s = LOAD PTR <@%s> ", p->syms[2]->x.name, type_name(node_type(p)));
-		emit_children(p);
-		printf(")\n");
+		//If
+		if (types_are_equal(indir(t0), node_type(p, true))) {
+			printf("(%s = LOAD PTR <@%s> ", p->syms[2]->x.name, type_name(node_type(p, false)));
+			emit_children(p);
+			printf(")\n");
+		}
+
 		break;
 	case JUMP:
 		if (generic(k0->op) == ADDRG)
@@ -1519,7 +1629,11 @@ static void doarg(Node p) {}
 static void target(Node p) {}
 static void clobber(Node p) {}
 
-static MuNode muprepend(MuNode *headp, void* e, int scope) {
+/*! \relates munode
+
+*/
+static MuNode muprepend(MuNode *headp, void* e, int scope)
+{
 	MuNode n = NEW0(n, scope), head = *headp;
 	if (head == NULL) {
 		head = n;
@@ -1534,7 +1648,12 @@ static MuNode muprepend(MuNode *headp, void* e, int scope) {
 
 	return n;
 }
-static MuNode muappend(MuNode *headp, void* e, int scope) {
+
+/*! \relates munode
+
+*/
+static MuNode muappend(MuNode *headp, void* e, int scope)
+{
 	MuNode n = NEW0(n, scope), head = *headp;
 	if (head == NULL) {
 		head = n;
@@ -1551,7 +1670,12 @@ static MuNode muappend(MuNode *headp, void* e, int scope) {
 	return n;
 }
 //TODO: do this at runtime since ptrs are a thing -> in mugen add a cast node to proper type
-static void print_fields(Symbol s) {
+/// Prints references to all the fields of a struct or union.
+/*!
+
+*/
+static void print_fields(Symbol s)
+{
 	Type t = unqual(s->type);
 	if (!isstruct(t))
 		return;
@@ -1569,7 +1693,6 @@ static void print_fields(Symbol s) {
 
 		//alias p->name to the first field since LCC uses p->name as the address of the first elem
 		printf("%s = GETFIELDIREF <@%s 0> %%%s_iref\n", name, type_name(t), s->name);
-		//TODO: deal with arrays in structs in print_fields?
 		for (Field f = t->u.sym->u.s.flist; f; f = f->link)
 			if (f->bitsize && f->link && f->offset == f->link->offset)
 				printf("%s_%s = GETFIELDIREF<@%s %zu> %s_iref\n", name, f->name, type_name(t), i, NAME(s));
@@ -1578,7 +1701,20 @@ static void print_fields(Symbol s) {
 	}
 }
 
-static bool types_are_equal(Type t1, Type t2) {
+/// Checks if two types are structurally equal
+/*!
+	Returns true if t1 and t2 have the same base type, same number of levels of indirection, and that each level of indirection is the same (ptr or array).
+	Ignores CONST/VOLITILE qualifiers.
+
+		types_are_equal(inttype, const(inttype)) //true
+		types_are_equal(ptr(inttype), array(inttype)) //false
+
+	\param[in] t1 first type to compare
+	\param[in] t2 second type to compare
+	\return `true` if the two types are equal, `false` otherwise
+*/
+static bool_t types_are_equal(Type t1, Type t2)
+{
 	t1 = unqual(t1);
 	t2 = unqual(t2);
 	if (t1 == NULL || t2 == NULL) //we get here from one of the types being either an array or a ptr and the other not having as many levels of indirection
@@ -1603,7 +1739,11 @@ static bool types_are_equal(Type t1, Type t2) {
 	return false;
 }
 
-static MuType def_type_partial(Type t, const char *name) {
+/*define a new mu type's name and LCC type, but not it's mu type definition (effectively a C typedef)
+MuTypes with NULL mutype are not emited
+*/
+static MuType def_type_partial(Type t, const char *name)
+{
 	MuNode mt_node = mutype_list;
 	MuType mt;
 	for (; mt_node; mt_node = mt_node->next)
@@ -1618,20 +1758,22 @@ static MuType def_type_partial(Type t, const char *name) {
 	return mt;
 }
 
-static MuType def_type(Type t, const char *name, const char *mu_t) {
+static MuType def_type(Type t, const char *name, const char *mu_t)
+{
 	MuType mt = def_type_partial(t, name);
 	mt->mutype = string(mu_t);
 	return mt;
 }
 
-static MuType get_mutype(Type t) {
+static MuType get_mutype(Type t)
+{
 	if (t == longlong)
 		t = longtype;
 	else if (t == unsignedlonglong)
 		t = unsignedlong;
 	else if (t == longdouble)
 		t = doubletype;
-
+	t = unqual(t);
 	for (MuNode mtnode = mutype_list; mtnode; mtnode = mtnode->next)
 		if (types_are_equal(t, ELEM(MuType, mtnode)->type))
 			return ELEM(MuType, mtnode);
@@ -1683,14 +1825,16 @@ static MuType get_mutype(Type t) {
 	return NULL;
 }
 
-static char *type_name(Type t) {
+static char *type_name(Type t)
+{
 	MuType mt = get_mutype(t);
 	if (mt)
 		return mt->name;
 	return NULL;
 }
 
-static char *const_name(Type t, char *val) {
+static char *const_name(Type t, char *val)
+{
 	if (isptr(t) && string(val) == string("0"))
 		val = string("NULL");
 	char *tmp = val, *tmp2 = val;
@@ -1702,23 +1846,14 @@ static char *const_name(Type t, char *val) {
 	} while (*(++tmp) != 0);
 	char *v = string(tmp2);
 	MuNode mcnode = muconst_list;
-	Const c;
+	MuConst c;
 	for (; mcnode; mcnode = mcnode->next)
-		if (types_are_equal(ELEM(Const, mcnode)->type, t) && ELEM(Const, mcnode)->val == v)
-			return ELEM(Const, mcnode)->name;
+		if (types_are_equal(ELEM(MuConst, mcnode)->type, t) && ELEM(MuConst, mcnode)->val == v)
+			return ELEM(MuConst, mcnode)->name;
 
 	muappend(&muconst_list, NEW0(c, PERM), PERM);
 	c->name = stringf("%s_%s", type_name(t), v);
 	c->val = v;
 	c->type = t;
 	return c->name;
-}
-
-static int asgn_cost(Node a) {
-	if (a->kids[0] && a->kids[0]->syms[0] && a->kids[0]->syms[0]->type) {
-		Type t = a->kids[0]->syms[0]->type;
-		if (isstruct(t) || isptr(t) || isarray(t))
-			return LBURG_MAX;
-	}
-	return 0;
 }

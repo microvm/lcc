@@ -5,6 +5,9 @@
 *_d.txt
 *tmp
 
+doc/html
+doc/latex
+
 #VS stuff
 Debug
 Release
