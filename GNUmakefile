@@ -55,11 +55,11 @@ RCCOBJS=$Balloc$O \
 	$Btypes$O \
 	$Bnull$O \
 	$Bsymbolic$O \
-	$Bjson$O \
 	$Bgen$O \
 	$Bbytecode$O \
 	$Balpha$O \
 	$Bmips$O \
+	$Bmu$O \
 	$Bsparc$O \
 	$Bstab$O \
 	$Bx86$O \
@@ -97,7 +97,6 @@ $Bstmt$O:	src/stmt.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/stmt.c
 $Bstring$O:	src/string.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/string.c
 $Bsym$O:	src/sym.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/sym.c
 $Bsymbolic$O:	src/symbolic.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/symbolic.c
-$Bjson$O:	src/json.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/json.c
 $Bbytecode$O:	src/bytecode.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/bytecode.c
 $Btrace$O:	src/trace.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/trace.c
 $Btree$O:	src/tree.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/tree.c
@@ -107,6 +106,7 @@ $Bstab$O:	src/stab.c src/stab.h;	$(CC) $(CFLAGS) -c -Isrc -o $@ src/stab.c
 $Bdagcheck$O:	$Bdagcheck.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ $Bdagcheck.c
 $Balpha$O:	$Balpha.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ $Balpha.c
 $Bmips$O:	$Bmips.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ $Bmips.c
+$Bmu$O:		$Bmu.c;		$(CC) $(CFLAGS) -c -Isrc -o $@ $Bmu.c
 $Bsparc$O:	$Bsparc.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ $Bsparc.c
 $Bx86$O:	$Bx86.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ $Bx86.c
 $Bx86linux$O:	$Bx86linux.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ $Bx86linux.c
@@ -114,6 +114,7 @@ $Bx86linux$O:	$Bx86linux.c;	$(CC) $(CFLAGS) -c -Isrc -o $@ $Bx86linux.c
 $Bdagcheck.c:	$Blburg$E src/dagcheck.md; $Blburg src/dagcheck.md $@
 $Balpha.c:	$Blburg$E src/alpha.md;    $Blburg src/alpha.md    $@
 $Bmips.c:	$Blburg$E src/mips.md;     $Blburg src/mips.md     $@
+$Bmu.c:		$Blburg$E src/mu.md;	   $Blburg src/mu.md       $@
 $Bsparc.c:	$Blburg$E src/sparc.md;    $Blburg src/sparc.md    $@
 $Bx86.c:	$Blburg$E src/x86.md;      $Blburg src/x86.md      $@
 $Bx86linux.c:	$Blburg$E src/x86linux.md; $Blburg src/x86linux.md $@
@@ -263,6 +264,7 @@ RCCSRCS=src/alloc.c \
 	$Bdagcheck.c \
 	$Balpha.c \
 	$Bmips.c \
+	$Bmu.c \
 	$Bsparc.c \
 	$Bx86linux.c \
 	$Bx86.c

@@ -372,13 +372,13 @@ con: CNSTP8  "%a"
 stmt: reg  ""
 acon: con     "%0"
 acon: ADDRGP4  "%a"
-addr: ADDI4(reg,acon)  "%1($%0)"
-addr: ADDU4(reg,acon)  "%1($%0)"
-addr: ADDP4(reg,acon)  "%1($%0)"
+reg: ADDI4(reg,acon)  "la $%c,%1($%0)\n"
+reg: ADDU4(reg,acon)  "la $%c,%1($%0)\n"
+reg: ADDP4(reg,acon)  "la $%c,%1($%0)\n"
 addr: acon  "%0"
 addr: reg   "($%0)"
-addr: ADDRFP4  "%a+%F($sp)"
-addr: ADDRLP4  "%a+%F($sp)"
+reg: ADDRFP4  "la $%c,%a+%F($sp)\n"
+reg: ADDRLP4  "la $%c,%a+%F($sp)\n"
 reg: addr  "la $%c,%0\n"  1
 reg: CNSTI1  "# reg\n"  range(a, 0, 0)
 reg: CNSTI2  "# reg\n"  range(a, 0, 0)
