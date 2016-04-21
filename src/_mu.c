@@ -1,7 +1,18 @@
 #include "c.h"
 
-//%TOP_START
+//%BEGIN
+/*! \file _mu.c
+\todo
+	- deal with static vars
+	- do import, check export
+	- remove GETREF op
+	- stop pinning everything
+	- add ssa non-terminal
+	- (?)add block{beg, end}
+*/
+
 #include <stdio.h>
+
 #ifndef NULL
 #define NULL 0
 #endif
@@ -44,40 +55,40 @@ typedef struct mufunc * MuFunc;
 typedef struct muglobal * MuGlobal;
 
 ///Doubly linked list node
-/*!
-	The last node in the list has `next` left NULL to make looping through the list once easier.
-*/
-struct munode {
+/*! The last node in the list has `next` left NULL to make looping through the list once easier. */
+struct munode
+{
 	void *elem; ///< Element pointed to by this node
 	MuNode next; ///< Next node in the list
 	MuNode prev; ///< Previous node in the list
 };
 
-///Contains a Mu IR insruction stored as a string
-/*!
-	Used by progend()
-*/
-struct muinst {
+///Contains a Mu IR instruction stored as a string
+struct muinst
+{
 	char inst[1024]; ///< Mu IR instruction
-	MuInst parent; ///< ::muinst that uses the result of this instuction as input
+	MuInst parent; ///< ::muinst that uses the result of this instruction as input
 };
 
 ///Maps a ::Type to a Mu IR type
-struct mutype {
+struct mutype
+{
 	Type type; ///< ::Type being mapped
 	char *name; ///< Mu IR type name
 	char *mutype; ///< Mu IR type definition
 };
 
 ///Maps an LCC const to a Mu const variable
-struct muconst {
+struct muconst
+{
 	Type type; ///< ::Type of the const
 	char *name; ///< Mu variable name
 	char *val; ///< Value of the constant
 };
 
 ///Represents a method defined or used in the program
-struct mufunc {
+struct mufunc
+{
 	char *name; ///< Name of the function
 	MuNode param_types; ///< Head of the list of parameters. munode::elem is a ::Symbol
 	MuType ret; ///< Return type of the function
@@ -90,12 +101,15 @@ struct mufunc {
 	to an initialization value. However, because of how LCC works, we do not believe this case is possible.
 
 	If muglobal::s has an array ::Type of size `n` then muglobal::init_list is a list of `m <= n` elements
-	to intialize the first `m` elements of the array. All munode::elem point to the same element type.
+	to initialize the first `m` elements of the array. All munode::elem point to the same element type.
 
 	If muglobal::s has a struct ::Type with `n` fields then muglobal::init_list is a list of `m <= n` elements
-	to intialize the first `m` fields of the struct. The type of each munode::elem depends on the struct field type.
+	to initialize the first `m` fields of the struct. The type of each munode::elem depends on the struct field type.
+
+	\sa progend
 */
-struct muglobal {
+struct muglobal
+{
 	Symbol s; ///< Global symbol to define
 	MuNode init_list; ///< Head of the list of elements to initialize muglobal::s with
 };
@@ -164,22 +178,22 @@ static MuNode mutype_list = NULL;
 static MuNode muconst_list = NULL;
 /// munode::elem points to a ::mufunc
 /*! This list is used to store a ::mufunc for each method used/declared in the program. */
-static MuNode func_list = NULL;
+static MuNode mufunc_list = NULL;
 /// munode::elem points to a char * holding a Mu IR instruction
 /*! This list is used to store instructions that are pre-processed by Mu (right now this just includes the .sizeof operator). */
-static MuNode preproc_list = NULL;
+static MuNode mupreproc_list = NULL;
 /// munode::elem points to a ::muglobal
 /*! This list is used to store a ::muglobal for each LCC global. Each global is declared in the main file and initialized in a HAIL file. */
 static MuNode muglobal_list = NULL;
 /// munode::elem points to a char * holding a Mu IR instruction
 /*! This list is used to store instructions that unpin all variables that were pinned in a method. */
-static MuNode unpin_insts = NULL;
+static MuNode muunpin_insts = NULL;
 ///@}
 
-static Symbol intreg[32], fltreg[32];
-static Symbol intregw, fltregw;
+static Symbol intreg[32] /*! integer registers available */, fltreg[32] /*! floating point registers available*/;
+static Symbol intregw /*! mask for integer registers available to lcc */, fltregw /*! mask for floating point registers available to lcc */;
 
-/// Used to store the original name of the out file
+/// Stores the original name of the out file
 /*! Since we redirect stdout we need to keep the name of the file we should eventually output to. */
 char *outf;
 
@@ -195,14 +209,21 @@ char *exporting = NULL;
 
 ///Are we initializing a global?
 bool_t initializing_global = false;
-//%TOP_END
+//%END
 
-//These are declared at the top of the generated mu.c, we declare them here so intelisense works
+//These are declared at the top of the generated mu.c, we declare them here so intellisense works
+/// \private
 static short *_nts[];
+/// \private
 static char  *_isinstruction[];
 
-//%BOT_START
+//%BEGIN
 ///Initialize variables and do program-wide setup
+/*!
+	Adds all of the LCC built in types and functions to ::mutype_list and ::mufunc_list respectively.
+	Adds some useful consts to ::muconst_list.
+	Sets up registers to make LCC happy.
+*/
 static void progbeg(int argc, char *argv[])
 {
 	parseflags(argc, argv);
@@ -210,7 +231,7 @@ static void progbeg(int argc, char *argv[])
 	freopen(stringf("%s.tmp", outf), "w", stdout);
 
 	MuFunc f;
-	muappend(&func_list, NEW0(f, PERM), PERM);
+	muappend(&mufunc_list, NEW0(f, PERM), PERM);
 	f->name = string("void");
 
 	def_type(voidtype, "void", "void");
@@ -234,14 +255,12 @@ static void progbeg(int argc, char *argv[])
 	def_type(charptype, "ptr_char", "uptr<@char>");
 	def_type(funcptype, "ptr_void_func", "ufuncptr<@void_func>");
 
-	printf("\n");
-
 	const_name(voidptype, "NULL");
-	//0b10000000000000000000000000000000, useful for negation (ie could mult by -1 but why not use xor)
+	//0b10000000000000000000000000000000, useful for negation (ie could multiply by -1 but why not use XOR)
 	const_name(inttype, "2147483648");
 	const_name(longtype, "9223372036854775808");
 
-	//INT(32)_MAX and LONG(64)_MAX respectively, needed for binary complement
+	//UINT(32)_MAX and ULONG(64)_MAX respectively, needed for binary complement
 	const_name(inttype, "4294967295");
 	const_name(longtype, "18446744073709551615");
 
@@ -260,16 +279,42 @@ static void progbeg(int argc, char *argv[])
 	vmask[0] = vmask[1] = 0;
 }
 
+/// State of instruction currently being parsed
+/*!
+	Used exclusively by progend().
+*/
 enum InstState
 {
-	UNFINISHED_INST = 1,
-	CALL_INST = 2,
-	CALL_PARAMS = 4
+	DEFAULT_INST = 0, /*!< There is nothing interesting about the state of the current instruction */
+	UNFINISHED_INST = 1, /*!< An instruction was interrupted in order start parsing this instruction. The interrupted instruction expects a variable in place of the current instruction. */
+	CALL_INST = 2, /*!< The current instruction is a CALL */
+	CALL_PARAMS = 4 /*!< The current part of the instruction we are parsing is inside of CALL parameters */
 };
-char *fgetl(char **buf, size_t *sz, FILE *f)
+/// fgets wrapper that gets a whole line, irregardless of buffer size
+/*!
+	\param[in,out] buf pointer to a buffer that will contain the next line read from f. If necessary this buffer will be extended
+	\param[in,out] sz pointer to the size of the buffer. The value pointed to will be updated if buf is expanded
+	\param[in] f file to read from
+
+	\returns buf on success, NULL on error
+
+	This method wraps all of the complicated logic that deals with making sure an entire line was read by fgets.
+	We need this functionality because in progend() we distinguish lines that need parsing by looking at the last character of the line.
+*/
+char *fgetl(char **buf,
+				size_t *sz,
+				FILE *f)
 {
 	size_t s = *sz;
+	/// First we try fgets and if it reads the whole line into the buffer than we can just return.
 	char *res = fgets(*buf, s, f), *tmp;
+	/*!
+		If there is remaining data to read from the line then we
+			allocate a new buffer 2x the size of the old one,
+			copy the old buffer into the new one,
+			and fgets into the second half of the new buffer
+		until the buffer contains an entire line.
+	*/
 	while (res && !ferror(f) && (*buf)[strlen(*buf) - 1] != '\n') {
 		s *= 2;
 		tmp = allocate(s, PERM);
@@ -283,6 +328,19 @@ char *fgetl(char **buf, size_t *sz, FILE *f)
 	*sz = s;
 	return res;
 }
+/// Called after compilation is done. Transforms output into Mu IR.
+/*!
+	Since Mu IR is not an assembly language but LCC expects it to be,
+	so there are some instruction trees that LCC expects to be emitted as part of an instruction
+	(like adding a constant to an address) but that must be done as an instruction in Mu IR.
+	To get around this we emit (almost) all instructions wrapped in parentheses and unwrap them in this method.
+	This is the solution we used because we were trying to change LCC as little as possible.
+	If we were to go back and do it again finding where LCC hard codes addressing modes and stuff and
+	making it just emit instructions based on whether node::x::inst is set is what we would have done.
+
+	Additionally we don't emit the .global, .const, .typedef, and .funcdef instructions in the first pass
+	(the pass that has completed when this method is called). Those declarations are emitted here.
+*/
 static void progend(void)
 {
 	size_t bufsz = 256;
@@ -297,8 +355,8 @@ static void progend(void)
 	}
 
 	MuNode mn;
-
-	for (mn = preproc_list; mn; mn = mn->next)
+	// Emit the instructions/declarations stored in {mupreproc, muglobal, mutype, muconst, mufunc}_list
+	for (mn = mupreproc_list; mn; mn = mn->next)
 		puts(ELEM(char *, mn));
 	printf("\n");
 
@@ -316,9 +374,7 @@ static void progend(void)
 	}
 	printf("\n");
 
-	//there is a gaurentee that there will be something in mutype, muconst, and mufunc lists
-	mn = mutype_list;
-	do {
+	for (mn = mutype_list; mn; mn = mn->next) {
 		MuType t = ELEM(MuType, mn);
 		if (t->mutype == NULL) continue;
 		printf(".typedef @%s = %s\n", t->name, t->mutype);
@@ -326,23 +382,21 @@ static void progend(void)
 			printf(".typedef @%s_ref = ref<@%s>\n", t->name, t->name);
 			printf(".typedef @%s_iref = iref<@%s>\n", t->name, t->name);
 		}
-	} while ((mn = mn->next) != NULL);
+	}
 	printf("\n");
 
-	mn = muconst_list;
-	do {
+	for (mn = muconst_list; mn; mn = mn->next) {
 		MuConst c = ELEM(MuConst, mn);
 		printf(".const @%s <@%s> = %s\n", c->name, type_name(c->type), c->val);
-	} while ((mn = mn->next) != NULL);
+	}
 	printf("\n");
 
-	mn = func_list;
-	do {
+	for (mn = mufunc_list; mn; mn = mn->next) {
 		MuFunc f = ELEM(MuFunc, mn);
 		MuNode m = f->param_types;
 		MuType t;
 		if (f->import)
-			puts("//import");
+			puts("//TODO: import");
 		printf(".funcsig @%s_sig = (", f->name);
 		for (; m; m = m->next) {
 			t = ELEM(MuType, m);
@@ -354,87 +408,108 @@ static void progend(void)
 		if (f->ret) printf("@%s", f->ret->name);
 		printf(")\n");
 		printf(".typedef @%s_ref = funcref<@%s_sig>\n", f->name, f->name);
-	} while ((mn = mn->next) != NULL);
+	}
 
+	// This probably fixed some bug at some point. Might just have been for debugging. hard to tell bc it would fix a timing based bug
 	fflush(stdout);
 
-	//the following state needs to persist between lines
+	//the following state needs to persist between lines:
+	// current instruction being parsed
 	MuInst inst;
-	size_t inst_state = 0, depth = 0;
+	// the state of the current instruction being parsed
+	enum InstState inst_state = DEFAULT_INST;
+	// the depth of parenthesis, increased for each ( encountered, and decreased for each ). Used for CALL params since instructions wrapped in () can be a parameter
+	size_t depth = 0;
 	muappend(&inst_list, NEW0(inst, STMT), STMT);
+
+	/*!
+	The main loop consists of:
+	- fgetl()ing a line
+	- If that line is null
+		+ break
+	- if that line does not end with a ')' or the line is a comment (denoted by a leading //)
+		+ print it to the destination file with no further parsing and `continue`
+	- For each character in the instruction:
+		+ ignore tabs
+		+ distinguish '(' and ')' that mark the beginning/end of new instructions and the beginning/end of parameter lists for CALL instructions
+		+ copy the name of the result variable for child instructions (instructions wrapped in '()' that are part of other instructions) into their parent
+	- Print out ::inst_list that was filled by previous statement
+	*/
 	while (fgetl(&buf, &bufsz, srcf) != NULL) {
 		int len = strlen(buf) - 1;
 		buf[len] = '\0'; //we use puts so the buffer shouldn't also end with a newline
 
 		inst_state &= ~CALL_INST; //need to keep UNFINISHED_INST flag, but both CALL flags should be cleared
-		if (len && buf[len - 1] == ')' && strncmp(buf, "//", 2)) {
-			size_t inst_buf_idx = strlen(inst->inst), uinst_buf_idx;
-			for (size_t i = 0; i < len; i++) {
-				char c = buf[i];
-				switch (c) {
-				case '\t':
-					break;
-				case '(':
-					if (inst_state & CALL_INST) {
-						inst_state &= ~CALL_INST;
-						inst_state |= CALL_PARAMS;
-						inst->inst[inst_buf_idx++] = c;
-					} else if (i) {
-						depth++;
-						inst_state |= UNFINISHED_INST;
-						uinst_buf_idx = inst_buf_idx;
-						inst_buf_idx = 0;
-						MuInst parent = inst;
-						muprepend(&inst_list, NEW0(inst, STMT), STMT);
-						inst->parent = parent;
-						if (strncmp(buf + i - 1, "%(", 2) == 0) //special case for when a symbol name is itself an instruction
-							inst->inst[inst_buf_idx++] = '%';
-					} else
-						/*for muti argument instructions where both args can be trees of instructions the whole thing has to be wrapped in ()
-						  but we don't want to emit the instuction name as if it were a var name */
-						depth++;
-					break;
-				case ')':
-					if (depth) {
-						if (--depth == 0 && inst_state & CALL_PARAMS) { //for call instuctions where the function takes params.
-							inst_state &= ~CALL_PARAMS;
-							inst->inst[inst_buf_idx++] = c;
-							inst->inst[inst_buf_idx++] = '\n';
-						}
-						if (inst->parent)
-							inst = inst->parent;
-					} else if (inst_state & CALL_PARAMS) {
+		if (len == 0 || buf[len - 1] != ')' || strncmp(buf, "//", 2) == 0) {
+			puts(buf);
+			continue;
+		}
+
+		size_t inst_buf_idx = strlen(inst->inst), uinst_buf_idx;
+		for (size_t i = 0; i < len; i++) {
+			char c = buf[i];
+			switch (c) {
+			case '\t':
+				break;
+			case '(':
+				if (inst_state & CALL_INST) {
+					inst_state &= ~CALL_INST;
+					inst_state |= CALL_PARAMS;
+					inst->inst[inst_buf_idx++] = c;
+				} else if (i) {
+					depth++;
+					inst_state |= UNFINISHED_INST;
+					uinst_buf_idx = inst_buf_idx;
+					inst_buf_idx = 0;
+					MuInst parent = inst;
+					muprepend(&inst_list, NEW0(inst, STMT), STMT);
+					inst->parent = parent;
+					if (strncmp(buf + i - 1, "%(", 2) == 0) //special case for when a symbol name is itself an instruction
+						inst->inst[inst_buf_idx++] = '%';
+				} else
+					/*for muti argument instructions where both args can be trees of instructions the whole thing has to be wrapped in ()
+					but we don't want to emit the instruction name as if it were a var name */
+					depth++;
+				break;
+			case ')':
+				if (depth) {
+					if (--depth == 0 && inst_state & CALL_PARAMS) { //for call instructions where the function takes params.
 						inst_state &= ~CALL_PARAMS;
 						inst->inst[inst_buf_idx++] = c;
 						inst->inst[inst_buf_idx++] = '\n';
 					}
-					break;
-				case ' ':
-					if (inst_state & UNFINISHED_INST)
-						inst_state &= ~UNFINISHED_INST;
-				case 'C':
-					if (strncmp(buf + i, "CALL", 4) == 0)
-						inst_state |= CALL_INST;
-				default:
+					if (inst->parent)
+						inst = inst->parent;
+				} else if (inst_state & CALL_PARAMS) {
+					inst_state &= ~CALL_PARAMS;
 					inst->inst[inst_buf_idx++] = c;
-					if (inst_state & UNFINISHED_INST)
-						inst->parent->inst[uinst_buf_idx++] = c;
-					break;
+					inst->inst[inst_buf_idx++] = '\n';
 				}
+				break;
+			case ' ':
+				if (inst_state & UNFINISHED_INST)
+					inst_state &= ~UNFINISHED_INST;
+			case 'C':
+				if (strncmp(buf + i, "CALL", 4) == 0)
+					inst_state |= CALL_INST;
+			default:
+				inst->inst[inst_buf_idx++] = c;
+				if (inst_state & UNFINISHED_INST)
+					inst->parent->inst[uinst_buf_idx++] = c;
+				break;
 			}
+		}
 
-			if (depth == 0 && !(inst_state & CALL_PARAMS)) {
-				size_t num = 0;
-				do {
-					printf("\t\t%s", ELEM(MuInst, inst_list)->inst);
-					if (num++ == 0 || inst_list->next)
-						printf("\n");
-				} while ((inst_list = inst_list->next) != NULL);
-				deallocate(STMT);
-				muappend(&inst_list, NEW0(inst, STMT), STMT);
-			}
-		} else
-			puts(buf);
+		if (depth == 0 && !(inst_state & CALL_PARAMS)) {
+			size_t num = 0;
+			do {
+				printf("\t\t%s", ELEM(MuInst, inst_list)->inst);
+				if (num++ == 0 || inst_list->next)
+					printf("\n");
+			} while ((inst_list = inst_list->next) != NULL);
+			deallocate(STMT);
+			muappend(&inst_list, NEW0(inst, STMT), STMT);
+		}
 	}
 
 	if (!feof(srcf) && ferror(srcf))
@@ -443,7 +518,15 @@ static void progend(void)
 	fclose(stdout);
 }
 
-static void address(Symbol p, Symbol q, long n)
+/// Initialize `p` to `q + n`
+/*!
+	This method assumes that `q->type` is a struct, array, or pointer since adding to any other type doesn't make sense.
+
+	\todo check over once other changes have been made
+*/
+static void address(Symbol p /*!< [out] Symbol to initialize */,
+						  Symbol q /*!< [in] q Symbol representing an address */,
+						  long n /*!< [in] amount to add to, or subtract from, `q` */)
 {
 	char *name = string("");
 	if (isunion(q->type))
@@ -479,11 +562,13 @@ static void address(Symbol p, Symbol q, long n)
 	p->x.name = name;
 }
 
-static void defaddress(Symbol p)
+/// Initialize a ptr constant that involves symbols instead of numbers
+static void defaddress(Symbol p /*!< [in] symbol holding value to initialize */)
 {
 	muappend(&(ELEM(MuGlobal, muglobal_list)->init_list), p->x.name, PERM);
 }
-static void defconst(int suffix, int size, Value v)
+/// Initialize constant value
+static void defconst(int suffix /*!< [in] which ::Value to use */, int size /*!< [in] size of value */, Value v /*!< [in] value */)
 {
 	char *cn, *val;
 	switch (suffix) {
@@ -518,7 +603,7 @@ static void defconst(int suffix, int size, Value v)
 		break;
 	case P:
 		val = stringf("%u", v.p);
-		//there is no way to know what the pointer type actually is, it'll get converted to the right type when being used
+		//there is no way to know what the pointer type actually is; it'll get converted to the right type when being used
 		cn = const_name(voidptype, val);
 		break;
 	}
@@ -528,24 +613,34 @@ static void defconst(int suffix, int size, Value v)
 	} else if (cn && initializing_global)
 		muappend(&(ELEM(MuGlobal, muglobal_list)->init_list), cn, PERM);
 }
-
-static void defstring(int n, char *str)
+/// Initialize char[] of length `n`
+/*!
+	Equivalent to repeatedly calling ::defconst with the values in `str`.
+*/
+static void defstring(int n /*! [in] length of `str` */, char *str /*! [in] value to initialize string to */)
 {
-	MuGlobal mg = ELEM(MuGlobal, muglobal_list);
 	for (size_t i = 0; i < n; i++) {
-		MuNode mn = muappend(&(mg->init_list), NULL, PERM);
+		MuNode mn = muappend(&(ELEM(MuGlobal, muglobal_list)->init_list), NULL, PERM);
 		mn->elem = const_name(chartype, stringf("%u", str[i]));
 	}
 }
-static void defsymbol(Symbol p)
+/// Initializes Symbol::x
+/*!
+	\todo deal with static vars
+
+	This method is only called when Symbol::sclass is STATIC or Symbol::scope is ::CONSTANTS, ::LABELS, or ::GLOBAL.
+	Initializes Symbol::x based on Symbol::scope, Symbol::generated, and Symbol::type.
+*/
+static void defsymbol(Symbol p /*!< [in,out] p ::Symbol whose Symbol::x should be initialized */)
 {
-	if (p->generated && p->scope != LABELS)
+	if (p->generated && p->scope != LABELS) //temporaries
 		p->x.name = stringf("%s", p->name);
-	else if (p->generated)
+	else if (p->generated)                  //labels
 		p->x.name = stringf("L%s", p->name);
 	else if (p->scope >= LOCAL)
-		p->x.name = stringf("%d_%s", p->scope, p->name);
-	else if (p->type && isscalar(p->type)) {
+		//p->x.name = stringf("%d_%s", p->scope, p->name);
+		assert(false);
+	else if (p->type && isscalar(p->type)) { //global and constant scalar values
 		if (isfloat(p->type))
 			p->x.name = p->name;
 		else if (isunsigned(p->type))
@@ -554,20 +649,23 @@ static void defsymbol(Symbol p)
 			p->x.name = stringf("%D", p->u.value);
 
 		const_name(p->type, p->x.name);
-	} else
+	} else //global and constant pointers, structs, etc
 		p->x.name = p->name;
 }
 
-static bool_t def_func(char *fname, Type ft, bool_t import)
+/// add a function to the list of functions whose definitions are emitted in ::progend
+static bool_t def_func(char *fname /*! [in] name of function being def'd */,
+							  Type ft /*! [in] function type */,
+							  bool_t import /*! [in] bool_t::true if this function needs to be imported */)
 {
 	if (ft->u.f.oldstyle) {
-		printf("//There are Ph.D.'s who are younger than ANSI C, dawg\n//Omitted Pre-ANSI C function %s.\n", fname);
+		printf("//There are Ph.D.'s who are younger than ANSI C, fam\n//Omitted Pre-ANSI C function %s.\n", fname);
 		return false;
 	}
 
 	MuFunc mf;
 	Type *args = ft->u.f.proto;
-	muappend(&func_list, NEW0(mf, PERM), PERM);
+	muappend(&mufunc_list, NEW0(mf, PERM), PERM);
 	mf->name = string(fname);
 	mf->ret = get_mutype(ft->type);
 	mf->import = import;
@@ -576,6 +674,14 @@ static bool_t def_func(char *fname, Type ft, bool_t import)
 	return true;
 }
 
+/// Generates and emits code for `f`
+/*!
+	This method does not actually generate or emit code, it calls gencode() and emitcode() to do that.
+	What it does do is define the function using def_func(), emit the function prologue, call gencode() and emitcode(),
+	and emit the function epilogue.
+
+	\todo Add return at end that unpins all vars that are pinned in the method?
+*/
 static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 {
 	if (!def_func(f->name, f->type, false))
@@ -610,28 +716,43 @@ static void function(Symbol f, Symbol caller[], Symbol callee[], int ncalls)
 	printf("}\n\n");
 }
 
-static void import(Symbol p)
+/// imports the method represented by `p`
+/*! \todo make sure this works */
+static void import(Symbol p /*!< [in] symbol to import */)
 {
 	if (isfunc(p->type))
 		def_func(p->name, p->type, true);
 	else
 		todo("Add a case for %s in import", type_name(p->type));
 }
-static void export(Symbol p)
+/// export the method or variable represented by `p`
+/*! \todo make sure this works */
+static void export(Symbol p /*!< [in] symbol to export */)
 {
 	if (!isfunc(p->type))
 		exporting = p->x.name;
 	else
 		printf("COMMINST @uvm.native.expose [#DEFAULT] <[@%s_sig]>\n", p->x.name);
 }
-static void global(Symbol p)
+/// Defines a ::GLOBAL variable
+/*!
+	Adds a global variable to ::muglobal_list. Data initialization functions are called after this.
+*/
+static void global(Symbol p /*!< [in] global to define */)
 {
 	MuGlobal mg;
 	muprepend(&muglobal_list, NEW0(mg, PERM), PERM);
 	mg->s = p;
 	initializing_global = true;
 }
-static void local(Symbol p)
+/// Defines a local variable
+/*!
+	\todo work on pinning, stop ALLOCAing everything, initialize vars that are not ALLOCA'd
+
+	This method will also initialize local variables that are not temporaries.
+	Since we have no knowledge of if variables are initialized before use we initialize all to a default value.
+*/
+static void local(Symbol p /*!< [in] local variable to define */)
 {
 	printf("\t\t%s_iref = ALLOCA <@%s>\n", NAME(p), type_name(p->type));
 	printf("\t\t%s = COMMINST @uvm.native.pin <@%s_iref> %s_iref\n", NAME(p), type_name(p->type), NAME(p));
@@ -645,15 +766,23 @@ static void local(Symbol p)
 	p->x.name = p->name;
 }
 
+/// UNNECESSARY
+/*! Probably. The only reason we would need it is if it was used to mark the end of initializing a global variable */
 static void segment(int n) {}
 
+/// Unnecessary?
+/*!
+	Initialize `n` bytes to 0. Maybe equivalent to calling defconst(I,1,0) `n` times(?).
+
+	Marked as unnecessary since i think it only gets called to pad out arrays/structs that are only partially initialized
+*/
 static void space(int n)
 {
 	printf("//%s(%d) called\n", __FUNCTION__, n);
 }
 
-//Create a copy of a sym, assign it to the origonal location, and return the origonal symbol
-static Symbol clone_sym(Symbol *s)
+///Create a copy of a ::Symbol, assign it to the original location, and return the original
+static Symbol clone_sym(Symbol *s /*!< Pointer to symbol to clone */)
 {
 	Symbol snew = NEW(snew, FUNC), sold = *s;
 	memcpy(snew, *s, sizeof(*snew));
@@ -661,10 +790,14 @@ static Symbol clone_sym(Symbol *s)
 	return sold;
 }
 
-/*
-ONLY CALL WITH ROOT NODES
-Generates asgn nodes for fuctions that return values but the program has not stored that value
-We need this because everything except CALLV is not a statement
+/// Fix CALL root nodes
+/*!
+	Only called with root nodes.
+
+	Generates ASGN nodes for functions that return values but the program has not stored that value.
+	We need this because everything except CALLV is not a statement and so the code generator will complain.
+
+	Transforms CALL(...) into ASGN(ADDR,CALL(...)).
 */
 static void mugen_fasgn(Node p, Node *forest)
 {
@@ -687,9 +820,10 @@ static void mugen_fasgn(Node p, Node *forest)
 	}
 }
 
-/*
-	fix storing to arrays (ex. arr[0] = 1), need to get reference to first elem of array and store to that
-	also fix other issues with storing to pointers?
+/// Fix storing to arrays
+/*!
+	Since arrays are pointers LCC stores to arr[0] as if it were a pointer to the array's element type.
+	We make it store to a variable that is a ref to arr[0].
 */
 static void fix_asgn_to_ptr(Node n)
 {
@@ -706,31 +840,9 @@ static void fix_asgn_to_ptr(Node n)
 	}
 }
 
-//TODO: do this in emit2
-//static void fix_ptr_arith(Node n) {
-//	Node k0 = n->kids[0], k1 = n->kids[1];
-//	Type t0 = indir(node_type(k0, false)), t1 = node_type(k1, false);
-//	assert(t1 == longtype || t1 == unsignedlong);
-//
-//	if (isscalar(t0)) {
-//		Value v;
-//		v.u = unqual(t0)->size;
-//		n->kids[1] = newnode(DIV + ttob(t1), k1, newnode(CNST + ttob(t1), NULL, NULL, constant(t1, v)), NULL);
-//	} else if (isarray(t0) || isstruct(t0)) {
-//		size_t off;
-//		if (generic(k1->op) == CNST) {
-//			off = k1->syms[0]->u.value;
-//		} else if (isarray(t0)) {
-//			/*we want to emit
-//				%tmp = GETELEMREF <@type_name(t1)> k0 k1
-//			*/
-//		} else
-//			panic("we do not support adding arbitrary values to struct ptrs");
-//	} else
-//		assert(false);
-//}
-
-static void mugen_walk(Node n, Node parent)
+///Encapsulates all code transformations done on the tree
+/*! \todo Figure out unions :( */
+static void mugen_walk(Node n /*!< Current node being processed */, Node parent /*!< Parent of current node being processed */)
 {
 	if (n == NULL)
 		return;
@@ -750,15 +862,14 @@ static void mugen_walk(Node n, Node parent)
 		//n->syms[0]->type = ptr(pt);
 	}
 
-	////adds LOAD instuctions for retrieving values from a union
+	////adds LOAD instructions for retrieving values from a union
 	//if (isaddr(n->op) && isunion(indir(t)) && optype(parent->op) != B) {
 	//	Symbol tmp = newtemp(AUTO, optype(parent->op), opsize(parent->op)), s = clone_sym(&(n->syms[0]));
 	//	char *ptname = type_name(btot(optype(parent->op), opsize(parent->op)));
 	//	n->syms[0]->x.name = stringf("(%s_tmp = LOAD <@%s> %%%s_iref_%s)\n", tmp->name, ptname, s->name, ptname);
 	//}
 
-	// Generates symbols and a node to bridge between LCC conditional branches (one node) and
-	// Mu branches (comparison then cond branch)
+	/// Generates symbols and a node to bridge between LCC conditional branches (one node) and Mu branches (comparison then cond branch).
 	if (op == GT || op == GE || op == EQ || op == NE || op == LE || op == LT) {
 		n->syms[1] = newtemp(AUTO, opt, opsz);
 		n->syms[1]->x.name = stringf("cond_%s", n->syms[1]->name);
@@ -768,16 +879,17 @@ static void mugen_walk(Node n, Node parent)
 		n->link = tmp;
 	}
 
-	//normalize ptr ops to have the ptr be the left child
+	/// Normalizes ptr ops to have the ptr be the left child.
 	if (op == ADD && opt == P && (isptr(t1) || isarray(t1))) {
 		n->kids[0] = k1;
 		n->kids[1] = k0;
 	}
 
+	/// Calls fix_asgn_to_ptr()
 	if (op == ASGN && (isptr(indir(t0)) || isarray(indir(t0))))
 		fix_asgn_to_ptr(n);
 
-	//For sanity
+	/// Labels all temporary and generated variables as such.
 	for (size_t i = 0; i < 2; i++)
 		if (n->syms[i] && n->syms[i]->temporary) {
 			if (strncmp(n->syms[i]->name, "tmp", 3) == 0) continue;
@@ -790,9 +902,7 @@ static void mugen_walk(Node n, Node parent)
 		}
 }
 
-/*
-Generates a variable name for each instruction's result
-*/
+/// Generates a variable name for each instruction's result
 static void mugen_var(Node p, int child)
 {
 	if (p == NULL)
@@ -809,11 +919,15 @@ static void mugen_var(Node p, int child)
 
 /*
  TODO: <list>
-	1. remove lables after returns
+	1. remove labels after returns
 	2. remove labels at end of functions or add default return val
 	3. add RETV to all funcs that don't explicitly return (possibly fixed by 2)
  */
-static Node mugen(Node forest)
+/// Do Mu specific transformations on the code tree
+/*!
+	Called by gencode()
+*/
+static Node mugen(Node forest /*!< [in,out]  */)
 {
 	for (Node p = forest; p; p = p->link) {
 		mugen_walk(p, NULL);
@@ -829,7 +943,8 @@ static Node mugen(Node forest)
 }
 
 //XInterface funcs
-static Symbol rmap(int opk)
+/// Map opcodes onto registers
+static Symbol rmap(int opk /*!< [in] Opcode to choose a register type for */)
 {
 	switch (optype(opk)) {
 	case B:
@@ -844,29 +959,41 @@ static Symbol rmap(int opk)
 	}
 }
 
+/// UNUSED: Only called when Interface::wants_argb or Interface::wants_callb is false?
 static void blkfetch(int k, int off, int reg, int tmp)
 {
 	printf("//%s called\n", __FUNCTION__);
 }
+/// UNUSED: Only called when Interface::wants_argb or Interface::wants_callb is false?
 static void blkstore(int k, int off, int reg, int tmp)
 {
 	printf("//%s called\n", __FUNCTION__);
 }
+/// UNUSED: Only called when Interface::wants_argb or Interface::wants_callb is false?
 static void blkloop(int dreg, int doff, int sreg, int soff, int size, int tmps[])
 {
 	printf("//%s called\n", __FUNCTION__);
 }
 
-static Type node_type(Node p, bool_t arrays_as_ptrs)
+/// Calculates the type of a node
+/*!
+	Calculates type based on node type and size for non-ptr nodes.
+	Recursively calculates ptr types by descending into the tree until a base type can be calculated and working with that.
+	Since we have no info about type when converting from a long to a pointer we return ::voidptype.
+
+	\returns ::voidtype for `stmt` nodes, otherwise calculated Node type
+*/
+static Type node_type(Node p /*!< [in] node to calculate the type of */,
+							 bool_t arrays_as_ptrs /*!< [in] If true return array types as pointer types */)
 {
 	if (p == NULL)
 		return NULL;
 	int opg = generic(p->op);
 
 	//if the op is a statement (inst executed for side effects) then its type is void
-	if (opg == ARG || opg == ASGN ||
+	if (opg == ARG || opg == ASGN || opg == LABEL || opg == JUMP || opg == RET ||
 		 opg == LT || opg == LE || opg == EQ || opg == GE || opg == GT || opg == NE ||
-		 opg == LABEL || opg == JUMP || p->op == CALL + V)
+		 p->op == CALL + V)
 		return voidtype;
 
 	if (optype(p->op) == B) {
@@ -906,11 +1033,6 @@ static Type node_type(Node p, bool_t arrays_as_ptrs)
 			return t2;
 		else
 			panic("unknown type for addp/subp (neither subtree was a ptr)");
-		assert(false);
-		break;
-	case RET:
-		return voidtype;
-		break;
 	default:
 		assert(false);
 		break;
@@ -919,7 +1041,9 @@ static Type node_type(Node p, bool_t arrays_as_ptrs)
 	return NULL;
 }
 
-static void emit_children(Node p)
+/// emit the children of a node
+/*! Uses the same logic that emit() uses to emit the %{0,1} pattern. */
+static void emit_children(Node p /*!< [in] node to emit the children of */)
 {
 	short *nts = _nts[_rule(p->x.state, p->x.inst)];
 	if (p->kids[0])
@@ -930,7 +1054,9 @@ static void emit_children(Node p)
 	}
 }
 
-static void emit_asgnp(Node p)
+/// emit an ASGNP node
+/*! \todo fix some cases and make sure it works */
+static void emit_asgnp(Node p /*!< [in] node to emit */)
 {
 	Node k0 = p->kids[0], k1 = p->kids[1];
 	Symbol s0 = k0->syms[0], s1 = k1->syms[0];
@@ -980,7 +1106,7 @@ static void emit_asgnp(Node p)
 	case ADDRL: //Tree is ASGNP(ADDR,ADDR)
 		t = s1->type;
 		char *tmp = stringf("%%%d_%s", genlabel(1), s0->x.name);
-		/*this does need to be done in two steps (we can't just asign to the result) because the following example is valid:
+		/*this does need to be done in two steps (we can't just assign to the result) because the following example is valid:
 		short *sp = NULL;
 		char **cpp = (char **)&sp;
 		*/
@@ -1002,7 +1128,23 @@ static void emit_asgnp(Node p)
 }
 
 //TODO: gen -> emit conversion nodes for INDIRI1(INDIRI4(...)) as well as ASGNP when node_type(k0) != node_type(k1)
-static void emit2(Node p)
+/// Emits all instructions that cannot be emitted as part of a template
+/*!
+	Instructions that this method expects to encounter (some cases of these instructions are emitted using templates (see ASGNI), but there are some cases that make it here):
+	- \p ADDP
+	- \p ARG*
+	- \p ASGN*
+	- \p CALL*
+	- \p CNST*
+	- \p CVUP
+	- \p CVPU
+	- \p INDIR*
+	- \p JUMP
+
+	\todo finish this method
+	\todo document each instruction that is generated
+*/
+static void emit2(Node p /*!< [in] node to emit */)
 {
 	Node k0 = p->kids[0], k1 = p->kids[1];
 	Symbol s0, s1;
@@ -1044,7 +1186,7 @@ static void emit2(Node p)
 		} else { //k0 results in a ufuncptr
 			sig = type_name(indir(node_type(k0, false)));
 			ref = k0->syms[2]->x.name;
-			//this load is in addition to any emited by the children
+			//this load is in addition to any emitted by the children
 			printf("(%s = LOAD <@%s_ref> ", ref, sig);
 			emit_children(p);
 			printf(")\n");
@@ -1073,7 +1215,6 @@ static void emit2(Node p)
 		printf(")\n");
 		break;
 	case INDIR:
-		//If
 		if (types_are_equal(indir(t0), node_type(p, true))) {
 			printf("(%s = LOAD PTR <@%s> ", p->syms[2]->x.name, type_name(node_type(p, false)));
 			emit_children(p);
@@ -1095,14 +1236,20 @@ static void emit2(Node p)
 	if (p->x.registered)
 		p->x.emitted = 1;
 }
+/// UNUSED: calculates reg or stack cell for `p`
 static void doarg(Node p) {}
+/// UNUSED: marks Nodes that must be evaluated into a specific register
 static void target(Node p) {}
+/// UNUSED: spills and reloads registers
 static void clobber(Node p) {}
 
-/*! \relates munode
-
+/// adds a new node to the beginning of a list, creating the list if it doesn't exist
+/*! \relatesalso munode
+	headp is a pointer so that we can create the list if it doesn't exist.
 */
-static MuNode muprepend(MuNode *headp, void* e, int scope)
+static MuNode muprepend(MuNode *headp /*!< [in,out] Pointer to head of the list */,
+								void *e /*!< [in] element to attach */,
+								int scope /*!< [in] scope in which to allocate the new ::MuNode */)
 {
 	MuNode n = NEW0(n, scope), head = *headp;
 	if (head == NULL) {
@@ -1119,10 +1266,13 @@ static MuNode muprepend(MuNode *headp, void* e, int scope)
 	return n;
 }
 
-/*! \relates munode
-
+/// adds a new node to the end of a list, creating the list if it doesn't exist
+/*! \relatesalso munode
+	headp is a pointer so that we can create the list if it doesn't exist.
 */
-static MuNode muappend(MuNode *headp, void* e, int scope)
+static MuNode muappend(MuNode *headp /*!< [in,out] Pointer to head of the list */,
+							  void *e /*!< [in] element to attach */,
+							  int scope /*!< [in] scope in which to allocate the new ::MuNode */)
 {
 	MuNode n = NEW0(n, scope), head = *headp;
 	if (head == NULL) {
@@ -1139,12 +1289,10 @@ static MuNode muappend(MuNode *headp, void* e, int scope)
 	n->elem = e;
 	return n;
 }
-//TODO: do this at runtime since ptrs are a thing -> in mugen add a cast node to proper type
+//
 /// Prints references to all the fields of a struct or union.
-/*!
-
-*/
-static void print_fields(Symbol s)
+/*! \todo do this at runtime(?) since ptrs are a thing -> in mugen add a cast node to proper type */
+static void print_fields(Symbol s /*!< [in] variable to print fields for */)
 {
 	Type t = unqual(s->type);
 	if (!isstruct(t))
@@ -1179,11 +1327,9 @@ static void print_fields(Symbol s)
 		types_are_equal(inttype, const(inttype)) //true
 		types_are_equal(ptr(inttype), array(inttype)) //false
 
-	\param[in] t1 first type to compare
-	\param[in] t2 second type to compare
 	\return `true` if the two types are equal, `false` otherwise
 */
-static bool_t types_are_equal(Type t1, Type t2)
+static bool_t types_are_equal(Type t1 /*!< [in] first type to compare */, Type t2 /*!< [in] second type to compare */)
 {
 	t1 = unqual(t1);
 	t2 = unqual(t2);
@@ -1209,10 +1355,17 @@ static bool_t types_are_equal(Type t1, Type t2)
 	return false;
 }
 
-/*define a new mu type's name and LCC type, but not it's mu type definition (effectively a C typedef)
-MuTypes with NULL mutype are not emited
+/// Define a type but do not provide a definition
+/*! \relatesalso mutype
+	Searches through ::mutype_list for an existing entry with type `t`.
+	If one is found then that MuType is returned,
+		and there is a bug somewhere because this method should never be called with types that have already been declared.
+	If one is not found then a new entry is added to the list and the new MuType is returned.
+
+	Used to implement recursive types.
 */
-static MuType def_type_partial(Type t, const char *name)
+static MuType def_type_partial(Type t /*!< [in] Type being declared */,
+										 const char *name /*!< [in] Mu type name */)
 {
 	MuNode mt_node = mutype_list;
 	MuType mt;
@@ -1228,14 +1381,26 @@ static MuType def_type_partial(Type t, const char *name)
 	return mt;
 }
 
-static MuType def_type(Type t, const char *name, const char *mu_t)
+/// Define a type including definition
+/*! \relatesalso mutype
+	Calls def_type_partial() and sets mutype::mutype of the returned value to `mu_t`.
+*/
+static MuType def_type(Type t /*!< [in] Type being declared */,
+							  const char *name /*!< [in] Mu type name */,
+							  const char *mu_t /*!< [in] Mu type definition */)
 {
 	MuType mt = def_type_partial(t, name);
 	mt->mutype = string(mu_t);
 	return mt;
 }
 
-static MuType get_mutype(Type t)
+/// Map a ::Type to a ::MuType
+/*! \relatesalso mutype
+	Searches through ::mutype_list for an existing entry with type `t`.
+	If one is found then the corresponding ::mutype is returned.
+	If an entry is not found a new one is created if `t` is a pointer, function, array, union, or struct.
+*/
+static MuType get_mutype(Type t /*!< [in] Type to get the MuType for */)
 {
 	if (t == longlong)
 		t = longtype;
@@ -1271,7 +1436,7 @@ static MuType get_mutype(Type t)
 		for (Field f = t->u.sym->u.s.flist; f; f = f->link)
 			name = stringf("%s@%s ", name, type_name(f->type));
 		name[strlen(name) - 1] = ')';
-		muappend(&preproc_list, name, PERM);
+		muappend(&mupreproc_list, name, PERM);
 		return def_type(t, t->u.sym->name, stringf("int<@%s_sz>", t->u.sym->name));
 	}
 	if (isstruct(t)) {
@@ -1295,7 +1460,8 @@ static MuType get_mutype(Type t)
 	return NULL;
 }
 
-static char *type_name(Type t)
+/// Wrapper for get_mutype() that just returns the Mu type's name
+static char *type_name(Type t  /*!< [in] Type to get a name for */)
 {
 	MuType mt = get_mutype(t);
 	if (mt)
@@ -1303,7 +1469,16 @@ static char *type_name(Type t)
 	return NULL;
 }
 
-static char *const_name(Type t, char *val)
+/// Get the name of the constant variable of type `t` holding value `val`.
+/*!
+	Searches through ::muconst_list looking for a variable of ::Type `t` with value `val`.
+	If there is such an entry its name is returned.
+	If no such entry exists then a new one is created an the generated name is returned.
+
+	\returns The name of a Mu IR variable with value `val` of type `t`
+*/
+static char *const_name(Type t /*!< [in] Type of constant */,
+								char *val  /*!< [in] value of constant represented as a string */)
 {
 	if (isptr(t) && string(val) == string("0"))
 		val = string("NULL");
@@ -1327,3 +1502,4 @@ static char *const_name(Type t, char *val)
 	c->type = t;
 	return c->name;
 }
+//%END

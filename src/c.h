@@ -597,4 +597,3 @@ extern Type qual(int, Type);
 extern void rmtypes(int);
 extern int ttob(Type);
 extern int variadic(Type);
-

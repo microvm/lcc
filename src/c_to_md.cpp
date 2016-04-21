@@ -21,8 +21,8 @@ void sseek(fstream &fs, string s) {
 	}
 }
 
-string start("//%START"); ///< Marker to begin copy 
-string stop("//%STOP"); ///<  Marker to stop copy
+string start("//%BEGIN"); ///< Marker to begin copy 
+string stop("//%END"); ///<  Marker to stop copy
 
 ///Copies parts of a C file into parts of a machine description file
 /*!
@@ -30,6 +30,7 @@ string stop("//%STOP"); ///<  Marker to stop copy
 	The C file consists of sections to be ignored and sections that are copied to the md file. The latter is bounded by ::start and ::stop.
 	The md file consists of sections that are maintained and sections that are overwriten with the contents of the C file. The latter is bounded by ::start and ::stop.
 	While there can be any number of copied/overwriten sections the number should be the same for both files.
+	A lot of the complexity in the while loop comes from my hatred of trailing newlines.
 */
 int main(int argc, char *argv[]) {
 	panic_if(argc < 3, "Usage: %s <input file> <output file>\n", argv[0]);
@@ -63,13 +64,16 @@ int main(int argc, char *argv[]) {
 		Move the input (C) fstream to the begining of the first section to copy
 		and copy the first section to be maintained from the temp file to the destination (md) file.
 		*/
-		if (ifs.good)
+		if (ifs.good())
 			sseek(ifs, start);
 		while (tmpfs.good()) {
 			tmpfs.getline(buf, 1024);
 			cnt = tmpfs.gcount();
 			ofs.write(buf, cnt - 1);
-			ofs.write("\n", 1);
+			if (tmpfs.eof())
+				ofs.write(&buf[cnt - 1], 1);
+			else
+				ofs.write("\n", 1);
 			if (start.compare(buf) == 0)
 				break;
 		}
@@ -78,18 +82,18 @@ int main(int argc, char *argv[]) {
 		Move the temp fstream to the end of the section to be overwritten
 		and copy the section to be copied from the input file to the destination file.
 		*/
-		if (tmpfs.good)
+		if (tmpfs.good())
 			sseek(tmpfs, stop);
 		while (ifs.good()) {
 			ifs.getline(buf, 1024);
 			cnt = ifs.gcount();
 			ofs.write(buf, cnt - 1);
-			if (stop.compare(buf) == 0)
-				break;
 			if (ifs.eof())
 				ofs.write(&buf[cnt - 1], 1);
-			else
+			if (tmpfs.good()) //there is still more to copy over
 				ofs.write("\n", 1);
+			if (stop.compare(buf) == 0)
+				break;
 		}
 	}
 

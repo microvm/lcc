@@ -17,17 +17,19 @@ C=$Blcc -Wo-lccdir=$(BUILDDIR) -Wf-target=$(TARGET) -Iinclude\$(TARGET)
 what:
 	-@echo nmake -f makefile.nt all rcc lburg cpp lcc bprint liblcc triple clean clobber
 
-all:: lcc rcc lburg cpp bprint liblcc ops sizes ctomd tests
+all:: lcc rcc lburg cpp bprint liblcc ops sizes ctomd doc tests
 
-rcc:	$Brcc$E
-lburg:	$Blburg$E
-cpp:	$Bcpp$E
-lcc:	$Blcc$E
-bprint:	$Bbprint$E
-liblcc:	$Bliblcc$A
-ops:	$Bops$E
-sizes:	$Bsizes$E
-ctomd:	$Bctomd$E
+rcc:     $Brcc$E
+lburg:   $Blburg$E
+cpp:     $Bcpp$E
+lcc:     $Blcc$E
+bprint:  $Bbprint$E
+liblcc:  $Bliblcc$A
+ops:     $Bops$E
+sizes:   $Bsizes$E
+ctomd:   $Bctomd$E
+
+doc:	src/_mu.c;	doxygen
 
 RCCOBJS=$Balloc$O \
 	$Bbind$O \
