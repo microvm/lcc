@@ -266,7 +266,12 @@ static void dumptree(Node p) {
 	if (p->op == VREG+P && p->syms[0]) {
 		fprint(stderr, "VREGP(%s)", p->syms[0]->name);
 		return;
+	} else if (generic(p->op) == LOAD) {
+		fprint(stderr, "LOAD(");
+		dumptree(p->kids[0]);
+		fprint(stderr, ")");
 	}
+	return;
 	fprint(stderr, "%s(", opname(p->op));
 	switch (generic(p->op)) {
 	case CNST: case LABEL:
@@ -278,7 +283,6 @@ static void dumptree(Node p) {
 		if (p->kids[0])
 			dumptree(p->kids[0]);
 		break;
-	case LOAD:
 	case CVF: case CVI: case CVP: case CVU: case JUMP:
 	case ARG: case BCOM: case NEG: case INDIR:
 		dumptree(p->kids[0]);
@@ -421,6 +425,25 @@ static void prelabel(Node p) {
 	prelabel(p->kids[1]);
 	if (NeedsReg[opindex(p->op)])
 		setreg(p, (*IR->x.rmap)(opkind(p->op)));
+	switch (generic(p->op)) {
+	case ADDRF: case ADDRL:
+		if (p->syms[0]->sclass == REGISTER)
+			p->op = VREG + P;
+		break;
+	case INDIR:
+		if (p->kids[0]->op == VREG + P)
+			setreg(p, p->kids[0]->syms[0]);
+		break;
+	case ASGN:
+		if (p->kids[0]->op == VREG + P)
+			rtarget(p, 1, p->kids[0]->syms[0]);
+		break;
+	case CVI: case CVU: case CVP:
+		if (optype(p->op) != F
+			 &&  opsize(p->op) <= p->syms[0]->u.c.v.i)
+			p->op = LOAD + opkind(p->op);
+		break;
+	}
 	(IR->x.target)(p);
 }
 void setreg(Node p, Symbol r) {
